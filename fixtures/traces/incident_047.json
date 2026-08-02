@@ -1,0 +1,105 @@
+[
+  {
+    "run_id": "run-047-a",
+    "step": "read",
+    "data": {
+      "client_id": "alpha",
+      "existing_obligations": 0,
+      "state_snapshot": {
+        "client_id": "alpha"
+      }
+    }
+  },
+  {
+    "run_id": "run-047-a",
+    "step": "reason",
+    "data": {
+      "prompt": "client:alpha",
+      "response": "PLACEHOLDER \u2014 replace with real content: Alpha obligation \u2014 file Form ADV amendment by March 31.",
+      "state_snapshot": {
+        "client_id": "alpha",
+        "last_response": "PLACEHOLDER \u2014 replace with real content: Alpha obligation \u2014 file Form ADV amendment by March 31."
+      }
+    }
+  },
+  {
+    "run_id": "run-047-b",
+    "step": "read",
+    "data": {
+      "client_id": "beta",
+      "existing_obligations": 0,
+      "state_snapshot": {
+        "client_id": "beta",
+        "last_response": "PLACEHOLDER \u2014 replace with real content: Alpha obligation \u2014 file Form ADV amendment by March 31."
+      }
+    }
+  },
+  {
+    "run_id": "run-047-b",
+    "step": "reason",
+    "data": {
+      "prompt": "client:beta",
+      "response": "PLACEHOLDER \u2014 replace with real content: Beta obligation \u2014 renew custody agreement by June 15.",
+      "state_snapshot": {
+        "client_id": "beta",
+        "last_response": "PLACEHOLDER \u2014 replace with real content: Beta obligation \u2014 renew custody agreement by June 15."
+      }
+    }
+  },
+  {
+    "run_id": "run-047-a",
+    "step": "write",
+    "data": {
+      "obligation": {
+        "id": null,
+        "client_id": "alpha",
+        "text": "PLACEHOLDER \u2014 replace with real content: Alpha obligation \u2014 file Form ADV amendment by March 31.",
+        "source_doc": "frozen_llm",
+        "idempotency_key": "72463c75010289c648e26e12ef7c8599bed6782326b1443d8856c6a9ca027ae7"
+      },
+      "state_snapshot": {
+        "client_id": "beta",
+        "last_response": "PLACEHOLDER \u2014 replace with real content: Beta obligation \u2014 renew custody agreement by June 15."
+      }
+    }
+  },
+  {
+    "run_id": "run-047-a",
+    "step": "draft",
+    "data": {
+      "content": "Briefing for beta: PLACEHOLDER \u2014 replace with real content: Beta obligation \u2014 renew custody agreement by June 15.",
+      "state_snapshot": {
+        "client_id": "beta",
+        "last_response": "PLACEHOLDER \u2014 replace with real content: Beta obligation \u2014 renew custody agreement by June 15."
+      }
+    }
+  },
+  {
+    "run_id": "run-047-b",
+    "step": "write",
+    "data": {
+      "obligation": {
+        "id": null,
+        "client_id": "beta",
+        "text": "PLACEHOLDER \u2014 replace with real content: Beta obligation \u2014 renew custody agreement by June 15.",
+        "source_doc": "frozen_llm",
+        "idempotency_key": "c852fe37e8c3d9394de0911cddadd6f13a73c858ec2bf652a281a143c7f1afa2"
+      },
+      "state_snapshot": {
+        "client_id": "beta",
+        "last_response": "PLACEHOLDER \u2014 replace with real content: Beta obligation \u2014 renew custody agreement by June 15."
+      }
+    }
+  },
+  {
+    "run_id": "run-047-b",
+    "step": "draft",
+    "data": {
+      "content": "Briefing for beta: PLACEHOLDER \u2014 replace with real content: Beta obligation \u2014 renew custody agreement by June 15.",
+      "state_snapshot": {
+        "client_id": "beta",
+        "last_response": "PLACEHOLDER \u2014 replace with real content: Beta obligation \u2014 renew custody agreement by June 15."
+      }
+    }
+  }
+]
