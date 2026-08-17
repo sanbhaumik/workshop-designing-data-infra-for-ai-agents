@@ -23,14 +23,22 @@ Six agenda blocks. Only two are hands-on labs.
 
 There are **exactly two labs** (Write, State). Never add a third. Provenance is a demo (build `Tracer`, `generate_trace.py`, `walk_trace.py` — no `your_fix.py`, no test). The opening and capstone are authored by a human — stub their folders with `# AUTHOR TODO`.
 
+## Architecture (revised — real agent, real DB, local & offline)
+
+This workshop uses a **real agent against a real local open-source LLM and a real Postgres database.** This deliberately revises the original "frozen fixtures / no network" design. Read this section carefully — future sessions must not "restore" the fixture-only approach.
+
+- **Two LLM backends, chosen by `NOVA_LLM`.** Lab *runners and demos* use `OllamaLLM` (a real local model, default `llama3.2:1b`, via `nova/ollama_llm.py`). The *pytest suite* uses `FrozenLLM` (`NOVA_LLM=frozen`) so the fail-naive / pass-reference contract stays deterministic and offline. Never make the test suite depend on Ollama.
+- **Local, not networked.** Ollama runs on `localhost`; there are no external API calls and no API keys. A local model is a real LLM that preserves the offline property. Do not add a hosted/cloud LLM call.
+- **Two store backends, chosen by `DATABASE_URL`.** Labs run against **Postgres** (`nova` DB, via `psycopg`); the test suite runs against **SQLite** (fast, offline, deterministic). Both implement the same store interface. Participant `your_fix.py` never writes raw SQL, so it is portable across both.
+- **One codebase, thin per-client launchers.** The engine is environment-agnostic and configured entirely by env vars (`NOVA_LLM`, `DATABASE_URL`, `OLLAMA_HOST`, `OLLAMA_MODEL`). A single `setup.sh` provisions Postgres + Ollama + the model + deps. Colab notebooks and the `.devcontainer` are thin launchers that both call `setup.sh`. Never fork the core code per environment.
+
 ## Golden rules (never violate)
 
-1. **No network at runtime.** LLM and embeddings come from fixtures. The only outbound-call code lives behind `NOVA_LIVE_LLM=1` and is off by default. Never add another network call.
-2. **Determinism is sacred.** Every engineered failure must fire on 100% of runs. No real threads racing, no `time.sleep`, no wall-clock timing, no unseeded randomness. Concurrency is *simulated* via the scripted cooperative `Scheduler`. If you touch anything concurrency-related, re-run the 20× determinism check before calling it done.
-3. **Cross-platform, no OS-specific code.** `pathlib` everywhere. No shell-outs, no platform branches. Must behave identically on Codespaces and Colab.
-4. **Python 3.11.9, dependencies hard-pinned.** Never bump a version or add a dependency without being asked. New deps must be pinned with `==`.
-5. **Transparency over abstraction.** The agent loop and labs are read by learners. Keep modules small, every step visible, nothing important hidden inside a framework or a clever helper. No agent framework (no LangGraph/LangChain).
-6. **Legible failures.** Corrupted records and wrong-client briefings are shown via `rich` and must read clearly when screen-shared at 720p.
+1. **Determinism where it's tested.** The pytest suite must fire each engineered failure 100% of runs, offline, on SQLite + FrozenLLM. Concurrency is *simulated* via the scripted cooperative `Scheduler` — no real threads, no `time.sleep`, no wall-clock timing, no unseeded randomness. Live lab runs may use the real (non-deterministic) model — that non-determinism is the point of the Write lab — but the tests never depend on it. Re-run the 20× determinism check after touching concurrency.
+2. **Cross-platform, no OS-specific code in the engine.** `pathlib` everywhere; keep OS specifics inside `setup.sh`. The engine must behave identically on a laptop, Codespaces, and Colab.
+3. **Dependencies hard-pinned.** Python 3.11.x. Never bump a version or add a dependency without being asked. New deps pinned with `==` (`psycopg[binary]` is the one added for Postgres).
+4. **Transparency over abstraction.** The agent loop and labs are read by learners. Keep modules small, every step visible, nothing important hidden inside a framework or a clever helper. No agent framework (no LangGraph/LangChain), and no ORM — hand-rolled SQL per backend.
+5. **Legible failures.** Corrupted records and wrong-client briefings are shown via `rich` and must read clearly when screen-shared at 720p. Participants can also see them directly in Postgres via SQL.
 
 ## IP fence (hard stop)
 

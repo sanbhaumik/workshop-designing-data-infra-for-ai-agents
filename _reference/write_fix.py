@@ -2,17 +2,14 @@
 
 Not shipped to participants and never merged into your_fix.py.
 """
-from nova.models import Obligation
-from nova.store import RecordStore
+import hashlib
 
 
-def guarded_write(store: RecordStore, ob: Obligation) -> None:
-    """Idempotency-key guard: skip the write if this obligation was already recorded."""
-    if ob.idempotency_key is not None:
-        existing = store.execute(
-            "SELECT 1 FROM obligations WHERE client_id = ? AND idempotency_key = ? LIMIT 1",
-            (ob.client_id, ob.idempotency_key),
-        )
-        if existing:
-            return
-    store.append_obligation(ob)
+def obligation_identity(client_id: str, source_doc: str, obligation_text: str) -> str:
+    """Stable intent identity: key on the inputs the agent committed to before
+    generating, not on the variable text it produced.
+
+    Two runs over the same (client_id, source_doc) map to the same key, so the
+    regulator is filed with exactly once no matter how the wording differs.
+    """
+    return hashlib.sha256(f"{client_id}|{source_doc}".encode("utf-8")).hexdigest()

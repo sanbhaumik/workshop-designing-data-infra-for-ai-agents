@@ -40,6 +40,31 @@ def format_briefing_content(client_id: str, response: str) -> str:
     return f"Briefing for {client_id}: {response}"
 
 
+def load_document(client_id: str, source_doc: str, fixtures_dir: Path | None = None) -> str:
+    """Load a client document's text from fixtures/clients/<client>/<source_doc>."""
+    base = fixtures_dir or (Path(__file__).resolve().parents[1] / "fixtures")
+    return (base / "clients" / client_id / source_doc).read_text()
+
+
+def extraction_prompt(client_id: str, source_doc: str, document_text: str, attempt: int) -> str:
+    """Natural-language prompt for the Write-lab obligation extraction.
+
+    Embeds the retrieved document so a real model has something to extract, and
+    frames it as fictional sample data so small models don't refuse. Sent
+    verbatim to Ollama, where a non-zero temperature makes two runs diverge; the
+    `(retry N)` marker also keys a distinct frozen fixture per run so the test
+    suite sees the same phenomenon deterministically. See modules/02_write_path.
+    """
+    return (
+        "You are a compliance assistant working with FICTIONAL sample data in a "
+        "training exercise. Below is a client engagement letter.\n\n"
+        f"--- {source_doc} ---\n{document_text}\n--- end of document ---\n\n"
+        f"Extract the single regulatory obligation it describes for client "
+        f"'{client_id}'. Reply with one short sentence stating the obligation. "
+        f"This is fictional sample data, so do not refuse. (retry {attempt})"
+    )
+
+
 class Agent:
     """Runs one client through retrieve -> reason -> write -> draft."""
 

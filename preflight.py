@@ -1,10 +1,12 @@
 """Environment self-check. Run first in any new environment.
 
 `python preflight.py` -- prints a large GREEN pass or a RED fail naming the
-problem.
+problem. Adapts to configuration:
+    NOVA_LLM=ollama (default) checks a live model; NOVA_LLM=frozen checks fixtures.
+    DATABASE_URL=postgres://... checks Postgres; otherwise a local SQLite file.
 """
+import os
 import sys
-import tempfile
 from pathlib import Path
 
 from rich.console import Console
@@ -12,13 +14,13 @@ from rich.console import Console
 ROOT = Path(__file__).resolve().parent
 console = Console()
 
-REQUIRED_PYTHON = (3, 11)
+MIN_PYTHON = (3, 11)
 
 
 def check_python_version() -> None:
-    if sys.version_info[:2] != REQUIRED_PYTHON:
+    if sys.version_info[:2] < MIN_PYTHON:
         raise RuntimeError(
-            f"Python {REQUIRED_PYTHON[0]}.{REQUIRED_PYTHON[1]}.x required, "
+            f"Python {MIN_PYTHON[0]}.{MIN_PYTHON[1]}+ required, "
             f"found {sys.version.split()[0]}"
         )
 
@@ -26,39 +28,70 @@ def check_python_version() -> None:
 def check_dependencies() -> None:
     import importlib
 
-    for module_name in ("pydantic", "numpy", "rich", "pytest", "yaml"):
-        try:
-            importlib.import_module(module_name)
-        except ImportError as exc:
-            raise RuntimeError(f"missing dependency: {module_name} ({exc})") from exc
+    modules = ["pydantic", "numpy", "rich", "pytest", "yaml"]
+    if os.environ.get("DATABASE_URL", "").startswith("postgres"):
+        modules.append("psycopg")
+    for module_name in modules:
+        importlib.import_module(module_name)
+
+
+def check_llm() -> None:
+    from nova.llm import get_llm
+
+    backend = os.environ.get("NOVA_LLM", "ollama")
+    llm = get_llm()
+    if backend == "ollama":
+        out = llm.complete("Reply with the single word: ready")
+        if not out:
+            raise RuntimeError("Ollama returned an empty response")
+    else:  # frozen — confirm a known fixture loads
+        from nova.agent import extraction_prompt, load_document
+
+        doc = load_document("alpha", "engagement_letter.md")
+        llm.complete(extraction_prompt("alpha", "engagement_letter.md", doc, 1))
+
+
+def check_database() -> None:
+    from nova.store import get_store
+
+    store = get_store()
+    store.init_schema()
+    store.get_filings()  # a real query against the configured backend
+    store.close()
 
 
 def check_smoke_test() -> None:
-    from nova.agent import Agent, SharedState
-    from nova.frozen_llm import FrozenLLM
-    from nova.store import RecordStore
-    from nova.trace import Tracer
+    from nova.agent import extraction_prompt, load_document
+    from nova.effects import RegulatoryFilingSystem
+    from nova.llm import get_llm
+    from nova.store import get_store
 
-    fixtures = ROOT / "fixtures"
-    with tempfile.TemporaryDirectory() as tmp:
-        store = RecordStore(Path(tmp) / "preflight.db")
-        store.init_schema()
-        tracer = Tracer(Path(tmp) / "preflight_trace.jsonl")
-        llm = FrozenLLM(fixtures / "llm_responses")
-        agent = Agent(store, llm, fixtures / "embeddings", tracer, SharedState())
+    store = get_store()
+    store.init_schema()
+    store.reset_demo()
+    llm = get_llm()
+    filing = RegulatoryFilingSystem(store)
 
-        briefing = agent.run("alpha", "preflight-run")
-
-    expected_prefix = "Briefing for alpha:"
-    if not briefing.content.startswith(expected_prefix):
-        raise RuntimeError(f"smoke test produced unexpected output: {briefing.content!r}")
+    doc = load_document("alpha", "engagement_letter.md")
+    text = llm.complete(extraction_prompt("alpha", "engagement_letter.md", doc, 1))
+    filing.submit("preflight-key", "alpha", text)
+    if len(filing.filings()) != 1:
+        raise RuntimeError("smoke test did not record exactly one filing")
+    store.reset_demo()
+    store.close()
 
 
 def main() -> None:
+    backend = os.environ.get("NOVA_LLM", "ollama")
+    db = "Postgres" if os.environ.get("DATABASE_URL", "").startswith("postgres") else "SQLite"
+    console.print(f"[dim]LLM backend: {backend}   •   Database: {db}[/dim]\n")
+
     checks = [
         ("Python 3.11.x", check_python_version),
         ("dependencies importable", check_dependencies),
-        ("engine smoke test (FrozenLLM + Agent + store)", check_smoke_test),
+        (f"LLM reachable ({backend})", check_llm),
+        (f"database reachable ({db})", check_database),
+        ("agent smoke test (retrieve → reason → file)", check_smoke_test),
     ]
     failures = []
     for name, check in checks:
@@ -73,8 +106,7 @@ def main() -> None:
     if failures:
         console.print("[bold white on red] RED [/bold white on red] preflight failed -- see failures above.")
         sys.exit(1)
-    else:
-        console.print("[bold white on green] GREEN [/bold white on green] environment ready.")
+    console.print("[bold white on green] GREEN [/bold white on green] environment ready.")
 
 
 if __name__ == "__main__":

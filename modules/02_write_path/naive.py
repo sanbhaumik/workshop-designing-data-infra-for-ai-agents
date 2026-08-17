@@ -1,76 +1,103 @@
-"""Module 02 — Write Problems: watch the corruption happen.
+"""Module 02 — Write Problems: run the agent and watch it file twice.
 
-Two agent runs for the SAME client race through the naive record store. The
-naive store has no idempotency check, so the same obligation gets written
-twice; and no version check, so one run's briefing silently overwrites the
-other's.
+Runs the NovaBridge obligation agent TWICE for the same client (a retry). You
+see each step the agent takes. Because the agent is non-deterministic, the two
+runs produce differently-worded obligations for the SAME real commitment -- and
+the naive identity guard files both with the regulator.
+
+The model is a real local LLM (Ollama) and the filings land in a real database
+(Postgres by DATABASE_URL, else a local SQLite file). Config via env:
+    NOVA_LLM=ollama|frozen     DATABASE_URL=postgresql://...
 
 Run this directly: `python modules/02_write_path/naive.py`
 """
-import tempfile
+import sys
 from pathlib import Path
 
+# Make `nova` and this folder's your_fix importable when run directly.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
 from rich.console import Console
+from rich.panel import Panel
 from rich.table import Table
 
-from nova.agent import Agent, SharedState
-from nova.frozen_llm import FrozenLLM
-from nova.scheduler import Scheduler
-from nova.store import RecordStore
-from nova.trace import Tracer
+from nova.agent import extraction_prompt, load_document
+from nova.effects import FILED, RegulatoryFilingSystem
+from nova.llm import get_llm
+from nova.store import get_store
+from your_fix import obligation_identity
 
-ROOT = Path(__file__).resolve().parents[2]
-FIXTURES = ROOT / "fixtures"
 CLIENT_ID = "alpha"
-
-CONFLICT_SCRIPT = [
-    "A:read", "B:read", "A:reason", "B:reason", "A:write", "B:write", "A:draft", "B:draft",
-]
+SOURCE_DOC = "engagement_letter.md"
 
 
-def build_agent(store: RecordStore, tracer: Tracer) -> Agent:
-    llm = FrozenLLM(FIXTURES / "llm_responses")
-    return Agent(store, llm, FIXTURES / "embeddings", tracer, SharedState())
+def run_agent(console: Console, llm, filing: RegulatoryFilingSystem, attempt: int) -> str:
+    """Run the agent once, narrating each step, and file the obligation.
+
+    Returns the obligation text this run produced.
+    """
+    console.rule(f"[bold]Agent run #{attempt}[/bold]  (client: {CLIENT_ID})")
+
+    document = load_document(CLIENT_ID, SOURCE_DOC)
+    console.print(f"  [cyan]1. RETRIEVE[/cyan]  loaded document: {SOURCE_DOC} ({len(document)} chars)")
+
+    obligation_text = llm.complete(extraction_prompt(CLIENT_ID, SOURCE_DOC, document, attempt))
+    console.print("  [cyan]2. REASON[/cyan]    the model extracted an obligation:")
+    console.print(f"             [yellow]{obligation_text}[/yellow]")
+
+    key = obligation_identity(CLIENT_ID, SOURCE_DOC, obligation_text)
+    console.print(f"  [cyan]3. IDENTITY[/cyan]  idempotency key = {key[:16]}…")
+
+    outcome = filing.submit(key, CLIENT_ID, obligation_text)
+    style = "green" if outcome == FILED else "magenta"
+    console.print(f"  [cyan]4. FILE[/cyan]      → regulator responded: [{style}]{outcome}[/{style}]")
+    console.print()
+    return obligation_text
 
 
 def main() -> None:
     console = Console()
-    with tempfile.TemporaryDirectory() as tmp:
-        store = RecordStore(Path(tmp) / "naive_write.db")
-        store.init_schema()
-        tracer = Tracer(Path(tmp) / "naive_write_trace.jsonl")
+    llm = get_llm()
+    store = get_store()
+    store.init_schema()
+    store.reset_demo()
+    filing = RegulatoryFilingSystem(store)
 
-        agent_a = build_agent(store, tracer)
-        agent_b = build_agent(store, tracer)
-
-        Scheduler(CONFLICT_SCRIPT).run(
-            lambda: agent_a.run_steps(CLIENT_ID, "run-a"),
-            lambda: agent_b.run_steps(CLIENT_ID, "run-b"),
+    console.print(
+        Panel(
+            "NovaBridge extracts a regulatory obligation for client 'alpha' and files it\n"
+            "with the regulator. We run it TWICE — the same way a retry would.",
+            title="Write Problems — the agent runs twice",
         )
+    )
+    console.print()
 
-        obligations = store.get_obligations(CLIENT_ID)
-        briefing = store.get_briefing(CLIENT_ID)
+    text_1 = run_agent(console, llm, filing, attempt=1)
+    text_2 = run_agent(console, llm, filing, attempt=2)
 
-    table = Table(title=f"Obligations for '{CLIENT_ID}' after two concurrent runs")
-    table.add_column("id")
-    table.add_column("text")
-    table.add_column("idempotency_key")
-    for ob in obligations:
-        table.add_row(str(ob.id), ob.text, ob.idempotency_key or "")
+    console.print("[bold]Same obligation, two wordings the agent produced:[/bold]")
+    console.print(f"  run #1: [yellow]{text_1}[/yellow]")
+    console.print(f"  run #2: [yellow]{text_2}[/yellow]")
+    console.print()
+
+    table = Table(title="What the regulator actually received  (SELECT * FROM filings)")
+    table.add_column("#")
+    table.add_column("outcome")
+    table.add_column("obligation text filed")
+    for i, attempt in enumerate(filing.attempts, start=1):
+        table.add_row(str(i), attempt.outcome, attempt.obligation_text)
     console.print(table)
 
-    console.print(f"\n[bold]{len(obligations)} obligation row(s) written for one true obligation.[/bold]")
-    if len(obligations) > 1:
+    n = len(filing.filings())
+    console.print(f"\n[bold]{n} filing(s) reached the regulator for one real obligation.[/bold]")
+    if n > 1:
         console.print(
-            "[bold red]CORRUPTION: the same obligation was written twice -- "
-            "the naive store has no idempotency guard.[/bold red]"
+            "[bold red]CORRUPTION: the same obligation was filed twice. A UNIQUE "
+            "constraint on the text would NOT have caught this — the two filings have "
+            "different text. The identity key was derived from the model's variable "
+            "output instead of the agent's stable intent.[/bold red]"
         )
-
-    console.print(f"\n[bold]Final briefing (version {briefing.get('version')}):[/bold] {briefing.get('content')}")
-    console.print(
-        "[bold red]Only one run's briefing survived -- the other was silently "
-        "overwritten (last-write-wins).[/bold red]"
-    )
 
 
 if __name__ == "__main__":

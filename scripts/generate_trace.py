@@ -7,8 +7,12 @@ with tracing on, and writes the full event trace as a single JSON array so
 Run this directly: `python scripts/generate_trace.py`
 """
 import json
+import sys
 import tempfile
 from pathlib import Path
+
+# Make `nova` importable when run directly (e.g. `python scripts/generate_trace.py`).
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from nova.agent import Agent, SharedState
 from nova.frozen_llm import FrozenLLM
