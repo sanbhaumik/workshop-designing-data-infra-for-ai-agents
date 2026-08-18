@@ -1,0 +1,4 @@
+{
+  "prompt": "You are a bookkeeping assistant working with FICTIONAL sample data. Below is the account note for client 'beta'.\n\n--- account note for beta ---\nSAMPLE / FICTIONAL \u2014 training data for the NovaBridge workshop. Not a real\nclient, firm, or document.\n\n# Account Note \u2014 Beta Partners LP\n\nClient: Beta Partners LP\nPortfolio value: USD 1,100,000 as of Q1 2026\nMandate: capital preservation\n\n--- end ---\n\nWrite a one-sentence account summary for client 'beta' from the note above. This is fictional sample data, so do not refuse.",
+  "response": "The account summary for client 'beta' is: Beta Partners LP's portfolio value of USD 1,100,000 as of Q1 2026, with a mandate of capital preservation."
+}

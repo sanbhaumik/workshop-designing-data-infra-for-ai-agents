@@ -33,35 +33,35 @@ def main() -> None:
     table.add_column("#")
     table.add_column("run_id")
     table.add_column("step")
-    table.add_column("state_snapshot")
+    table.add_column("memory_snapshot")
     for i, evt in enumerate(events):
-        snapshot = evt["data"].get("state_snapshot", {})
+        snapshot = evt["data"].get("memory_snapshot", {})
         table.add_row(str(i), evt["run_id"], evt["step"], str(snapshot))
     console.print(table)
 
-    draft_events = [e for e in events if e["step"] == "draft"]
-    console.print("\n[bold]Forensic walk — draft events:[/bold]")
-    for evt in draft_events:
+    save_events = [e for e in events if e["step"] == "save"]
+    console.print("\n[bold]Forensic walk — save events:[/bold]")
+    for evt in save_events:
         console.print(f"  run_id={evt['run_id']}: content = {evt['data'].get('content')!r}")
-        console.print(f"    state at draft time = {evt['data'].get('state_snapshot')}")
+        console.print(f"    memory at save time = {evt['data'].get('memory_snapshot')}")
 
     contaminated = [
-        e for e in draft_events
+        e for e in save_events
         if e["run_id"].endswith("-a") and "beta" in str(e["data"].get("content", "")).lower()
     ]
     if contaminated:
         console.print(
             "\n[bold red]With the trace, the answer is clear:[/bold red] run-047-a's "
-            "draft step read a state snapshot already carrying client 'beta' -- written "
-            "by run-047-b earlier, into the same shared state object. The trace shows "
+            "save step read a memory snapshot already carrying tenant 'beta' -- written "
+            "by run-047-b earlier, into the same shared memory object. The trace shows "
             "the exact read/write ordering that caused it."
         )
 
     console.print(
-        "\n[bold]Contrast — without a trace:[/bold] all we'd have is the final corrupted "
-        "briefing in the database. There would be no record of which run wrote what, "
-        "when, or what state it read at the moment of the mistake -- the question "
-        "'why does Alpha's briefing mention Beta?' would be unanswerable."
+        "\n[bold]Contrast — without a trace:[/bold] all we'd have is the final leaked "
+        "summary in the database. There would be no record of which run wrote what, "
+        "when, or what memory it read at the moment of the mistake -- the question "
+        "'why does Alpha's summary contain Beta's balance?' would be unanswerable."
     )
 
 

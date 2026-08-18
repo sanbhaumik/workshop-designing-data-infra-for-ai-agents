@@ -24,10 +24,7 @@ ROOT = Path(__file__).resolve().parents[1]
 FIXTURES = ROOT / "fixtures"
 TRACE_PATH = FIXTURES / "traces" / "incident_047.json"
 
-CONTAMINATION_SCRIPT = [
-    "A:read", "A:reason", "B:read", "B:reason",
-    "A:write", "A:draft", "B:write", "B:draft",
-]
+CONTAMINATION_SCRIPT = ["A:read", "A:reason", "B:read", "B:reason", "A:save", "B:save"]
 
 
 def main() -> None:

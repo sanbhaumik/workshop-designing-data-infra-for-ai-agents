@@ -1,21 +1,20 @@
-"""Transparent agent loop: retrieve -> reason -> extract & write -> draft.
+"""Transparent agent loop: retrieve -> reason -> save.
 
 Every step is a plain method call, nothing hidden inside a framework. State
 handling is dependency-injected so the labs can swap in a broken or fixed
-backend without touching this file.
+memory backend without touching this file.
 """
-import hashlib
 from pathlib import Path
 from typing import Generator, Protocol
 
 from nova.frozen_llm import FrozenLLM
-from nova.models import Briefing, Obligation
+from nova.models import Summary
 from nova.store import RecordStore
 from nova.trace import Tracer
 
 
 class StateBackend(Protocol):
-    """Working-state storage keyed by run_id."""
+    """Working memory storage keyed by run_id."""
 
     def get(self, run_id: str) -> dict: ...
 
@@ -35,9 +34,9 @@ class SharedState:
         self._data.update(data)
 
 
-def format_briefing_content(client_id: str, response: str) -> str:
-    """Pure formatting helper shared by Agent.draft and lab recovery code."""
-    return f"Briefing for {client_id}: {response}"
+def format_summary(client_id: str, response: str) -> str:
+    """Render the account summary that gets saved for a tenant."""
+    return f"Summary for {client_id}: {response}"
 
 
 def load_document(client_id: str, source_doc: str, fixtures_dir: Path | None = None) -> str:
@@ -49,10 +48,10 @@ def load_document(client_id: str, source_doc: str, fixtures_dir: Path | None = N
 def payment_memo_prompt(client_id: str, billing_period: str, document_text: str, attempt: int) -> str:
     """Natural-language prompt for the Write-lab payment memo.
 
-    The agent reads a client billing instruction and writes a one-line memo for
-    the advisory-fee charge. Sent verbatim to Ollama, where a non-zero
-    temperature makes two runs word the memo differently; the `(retry N)` marker
-    keys a distinct frozen fixture per run so the test suite sees the same
+    The agent reads a client billing note and writes a one-line memo for the
+    advisory-fee charge. Sent verbatim to Ollama, where a non-zero temperature
+    makes two runs word the memo differently; the `(retry N)` marker keys a
+    distinct frozen fixture per run so the test suite sees the same
     non-determinism deterministically. See modules/02_write_path.
     """
     return (
@@ -66,25 +65,24 @@ def payment_memo_prompt(client_id: str, billing_period: str, document_text: str,
     )
 
 
-def briefing_prompt(client_id: str, source_doc: str, document_text: str) -> str:
-    """Prompt for the State-lab per-tenant briefing.
+def summary_prompt(client_id: str, document_text: str) -> str:
+    """Prompt for the State-lab per-tenant account summary.
 
-    Grounds the model in one tenant's document so its briefing is legibly
-    tenant-specific -- which is what makes cross-tenant contamination obvious.
-    Deterministic per tenant (no retry marker): one frozen fixture each.
+    Grounds the model in one tenant's account note so its summary is legibly
+    tenant-specific -- which is what makes a cross-tenant leak obvious.
+    Deterministic per tenant: one frozen fixture each.
     """
     return (
-        "You are a compliance assistant working with FICTIONAL sample data. "
-        f"Below is the engagement letter for tenant '{client_id}'.\n\n"
-        f"--- {source_doc} ---\n{document_text}\n--- end of document ---\n\n"
-        f"Write a one-sentence internal briefing for tenant '{client_id}' "
-        f"summarizing their single regulatory obligation. This is fictional "
-        f"sample data, so do not refuse."
+        "You are a bookkeeping assistant working with FICTIONAL sample data. "
+        f"Below is the account note for client '{client_id}'.\n\n"
+        f"--- account note for {client_id} ---\n{document_text}\n--- end ---\n\n"
+        f"Write a one-sentence account summary for client '{client_id}' from the "
+        f"note above. This is fictional sample data, so do not refuse."
     )
 
 
 class Agent:
-    """Runs one client through retrieve -> reason -> write -> draft."""
+    """Runs one tenant through retrieve -> reason -> save."""
 
     def __init__(
         self,
@@ -100,8 +98,8 @@ class Agent:
         self.tracer = tracer
         self.state = state
 
-    def run(self, client_id: str, run_id: str) -> Briefing:
-        """Run the full loop to completion (no scheduler) and return the Briefing."""
+    def run(self, client_id: str, run_id: str) -> Summary:
+        """Run the full loop to completion (no scheduler) and return the Summary."""
         steps = self.run_steps(client_id, run_id)
         try:
             while True:
@@ -109,56 +107,40 @@ class Agent:
         except StopIteration as exc:
             return exc.value
 
-    def run_steps(self, client_id: str, run_id: str) -> Generator[str, None, Briefing]:
-        """Generator yielding 'read', 'reason', 'write', 'draft' checkpoints.
+    def run_steps(self, client_id: str, run_id: str) -> Generator[str, None, Summary]:
+        """Generator yielding 'read', 'reason', 'save' checkpoints.
 
-        Holds working state in self.state across steps and emits a trace
-        event at each one. Returns the final Briefing via StopIteration.
+        Holds working memory in self.state across steps and emits a trace event
+        at each one. Returns the final Summary via StopIteration.
         """
-        existing = self.store.get_obligations(client_id)
         working = self.state.get(run_id)
         working["client_id"] = client_id
         self.state.set(run_id, working)
         self.tracer.event(
             run_id, "read",
-            {"client_id": client_id, "existing_obligations": len(existing), "state_snapshot": dict(working)},
+            {"client_id": client_id, "memory_snapshot": dict(working)},
         )
         yield "read"
 
-        document = load_document(client_id, "engagement_letter.md")
-        prompt = briefing_prompt(client_id, "engagement_letter.md", document)
-        response = self.llm.complete(prompt)
+        document = load_document(client_id, "account_note.md")
+        response = self.llm.complete(summary_prompt(client_id, document))
         working = self.state.get(run_id)
         working["last_response"] = response
         self.state.set(run_id, working)
         self.tracer.event(
             run_id, "reason",
-            {"prompt": prompt, "response": response, "state_snapshot": dict(working)},
+            {"response": response, "memory_snapshot": dict(working)},
         )
         yield "reason"
 
-        ob = Obligation(
-            client_id=client_id,
-            text=response,
-            source_doc="frozen_llm",
-            idempotency_key=hashlib.sha256(f"{client_id}:{response}".encode("utf-8")).hexdigest(),
-        )
-        self.store.append_obligation(ob)
         working = self.state.get(run_id)
+        content = format_summary(working.get("client_id", client_id), working.get("last_response", ""))
+        self.store.set_summary(client_id, content)
+        summary = Summary(client_id=client_id, content=content)
         self.tracer.event(
-            run_id, "write",
-            {"obligation": ob.model_dump(), "state_snapshot": dict(working)},
+            run_id, "save",
+            {"content": content, "memory_snapshot": dict(working)},
         )
-        yield "write"
+        yield "save"
 
-        working = self.state.get(run_id)
-        content = format_briefing_content(working.get("client_id", client_id), working.get("last_response", ""))
-        self.store.set_briefing(client_id, content)
-        briefing = Briefing(client_id=client_id, content=content, obligations=[ob])
-        self.tracer.event(
-            run_id, "draft",
-            {"content": content, "state_snapshot": dict(working)},
-        )
-        yield "draft"
-
-        return briefing
+        return summary

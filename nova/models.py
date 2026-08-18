@@ -1,7 +1,5 @@
 """Pydantic models shared across the engine."""
-from typing import Optional
-
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class ClientDocument(BaseModel):
@@ -13,22 +11,11 @@ class ClientDocument(BaseModel):
     content: str = ""
 
 
-class Obligation(BaseModel):
-    """A single extracted obligation tied to a client and source document."""
-
-    id: Optional[int] = None
-    client_id: str
-    text: str
-    source_doc: str
-    idempotency_key: Optional[str] = None
-
-
-class Briefing(BaseModel):
-    """The drafted output of an agent run for one client."""
+class Summary(BaseModel):
+    """The account summary produced by an agent run for one client."""
 
     client_id: str
     content: str
-    obligations: list[Obligation] = Field(default_factory=list)
 
 
 class TraceEvent(BaseModel):

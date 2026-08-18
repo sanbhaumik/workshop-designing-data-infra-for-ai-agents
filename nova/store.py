@@ -16,16 +16,11 @@ import os
 import sqlite3
 from pathlib import Path
 
-from nova.models import Obligation
-
 SQLITE_SCHEMA = """
 CREATE TABLE IF NOT EXISTS clients (client_id TEXT PRIMARY KEY, name TEXT);
 CREATE TABLE IF NOT EXISTS documents (
     doc_id TEXT PRIMARY KEY, client_id TEXT NOT NULL, path TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS obligations (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    client_id TEXT NOT NULL, text TEXT NOT NULL, source_doc TEXT, idempotency_key TEXT);
-CREATE TABLE IF NOT EXISTS briefings (
+CREATE TABLE IF NOT EXISTS summaries (
     client_id TEXT PRIMARY KEY, content TEXT, version INTEGER NOT NULL DEFAULT 0);
 CREATE TABLE IF NOT EXISTS charges (
     idempotency_key TEXT PRIMARY KEY, client_id TEXT NOT NULL, amount INTEGER NOT NULL);
@@ -35,16 +30,13 @@ POSTGRES_SCHEMA = """
 CREATE TABLE IF NOT EXISTS clients (client_id TEXT PRIMARY KEY, name TEXT);
 CREATE TABLE IF NOT EXISTS documents (
     doc_id TEXT PRIMARY KEY, client_id TEXT NOT NULL, path TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS obligations (
-    id SERIAL PRIMARY KEY,
-    client_id TEXT NOT NULL, text TEXT NOT NULL, source_doc TEXT, idempotency_key TEXT);
-CREATE TABLE IF NOT EXISTS briefings (
+CREATE TABLE IF NOT EXISTS summaries (
     client_id TEXT PRIMARY KEY, content TEXT, version INTEGER NOT NULL DEFAULT 0);
 CREATE TABLE IF NOT EXISTS charges (
     idempotency_key TEXT PRIMARY KEY, client_id TEXT NOT NULL, amount INTEGER NOT NULL);
 """
 
-DEMO_TABLES = ("charges", "obligations", "briefings")
+DEMO_TABLES = ("charges", "summaries")
 
 
 class RecordStore:
@@ -74,31 +66,18 @@ class RecordStore:
         rows = self._rows("SELECT * FROM clients WHERE client_id = ?", (client_id,))
         return rows[0] if rows else {}
 
-    def append_obligation(self, ob: Obligation) -> None:
-        """NAIVE: inserts unconditionally. No dedup, no idempotency check."""
+    def set_summary(self, client_id: str, content: str) -> None:
+        """Save (last-write-wins) the account summary for a client."""
         self._exec(
-            "INSERT INTO obligations (client_id, text, source_doc, idempotency_key) "
-            "VALUES (?, ?, ?, ?)",
-            (ob.client_id, ob.text, ob.source_doc, ob.idempotency_key),
-        )
-
-    def get_obligations(self, client_id: str) -> list[Obligation]:
-        """Return all obligations recorded for a client, in insertion order."""
-        rows = self._rows("SELECT * FROM obligations WHERE client_id = ? ORDER BY id", (client_id,))
-        return [Obligation(**r) for r in rows]
-
-    def set_briefing(self, client_id: str, content: str) -> None:
-        """NAIVE: last-write-wins, no version check."""
-        self._exec(
-            "INSERT INTO briefings (client_id, content, version) VALUES (?, ?, 1) "
+            "INSERT INTO summaries (client_id, content, version) VALUES (?, ?, 1) "
             "ON CONFLICT(client_id) DO UPDATE SET "
-            "content = excluded.content, version = briefings.version + 1",
+            "content = excluded.content, version = summaries.version + 1",
             (client_id, content),
         )
 
-    def get_briefing(self, client_id: str) -> dict:
-        """Return the briefing row as a dict, or {} if it doesn't exist."""
-        rows = self._rows("SELECT * FROM briefings WHERE client_id = ?", (client_id,))
+    def get_summary(self, client_id: str) -> dict:
+        """Return the summary row as a dict, or {} if it doesn't exist."""
+        rows = self._rows("SELECT * FROM summaries WHERE client_id = ?", (client_id,))
         return rows[0] if rows else {}
 
     def already_charged(self, idempotency_key: str) -> bool:
@@ -163,31 +142,18 @@ class PostgresStore:
         rows = self._rows("SELECT * FROM clients WHERE client_id = %s", (client_id,))
         return rows[0] if rows else {}
 
-    def append_obligation(self, ob: Obligation) -> None:
-        """NAIVE: inserts unconditionally. No dedup, no idempotency check."""
+    def set_summary(self, client_id: str, content: str) -> None:
+        """Save (last-write-wins) the account summary for a client."""
         self._exec(
-            "INSERT INTO obligations (client_id, text, source_doc, idempotency_key) "
-            "VALUES (%s, %s, %s, %s)",
-            (ob.client_id, ob.text, ob.source_doc, ob.idempotency_key),
-        )
-
-    def get_obligations(self, client_id: str) -> list[Obligation]:
-        """Return all obligations recorded for a client, in insertion order."""
-        rows = self._rows("SELECT * FROM obligations WHERE client_id = %s ORDER BY id", (client_id,))
-        return [Obligation(**r) for r in rows]
-
-    def set_briefing(self, client_id: str, content: str) -> None:
-        """NAIVE: last-write-wins, no version check."""
-        self._exec(
-            "INSERT INTO briefings (client_id, content, version) VALUES (%s, %s, 1) "
+            "INSERT INTO summaries (client_id, content, version) VALUES (%s, %s, 1) "
             "ON CONFLICT (client_id) DO UPDATE SET "
-            "content = EXCLUDED.content, version = briefings.version + 1",
+            "content = EXCLUDED.content, version = summaries.version + 1",
             (client_id, content),
         )
 
-    def get_briefing(self, client_id: str) -> dict:
-        """Return the briefing row as a dict, or {} if it doesn't exist."""
-        rows = self._rows("SELECT * FROM briefings WHERE client_id = %s", (client_id,))
+    def get_summary(self, client_id: str) -> dict:
+        """Return the summary row as a dict, or {} if it doesn't exist."""
+        rows = self._rows("SELECT * FROM summaries WHERE client_id = %s", (client_id,))
         return rows[0] if rows else {}
 
     def already_charged(self, idempotency_key: str) -> bool:

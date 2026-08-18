@@ -4,8 +4,7 @@
     "step": "read",
     "data": {
       "client_id": "alpha",
-      "existing_obligations": 0,
-      "state_snapshot": {
+      "memory_snapshot": {
         "client_id": "alpha"
       }
     }
@@ -14,11 +13,10 @@
     "run_id": "run-047-a",
     "step": "reason",
     "data": {
-      "prompt": "You are a compliance assistant working with FICTIONAL sample data. Below is the engagement letter for tenant 'alpha'.\n\n--- engagement_letter.md ---\nSAMPLE / FICTIONAL \u2014 training data for the NovaBridge workshop. Not a real\nclient, firm, or document. Any resemblance to real entities is coincidental.\n\n# Engagement Letter \u2014 Alpha Capital Advisors LLC\n\nThis letter confirms the advisory engagement between Alpha Capital Advisors LLC\n(\"the Adviser\") and its client.\n\n## Regulatory obligation\n\nThe Adviser shall file its annual Form ADV amendment with the U.S. Securities\nand Exchange Commission within 90 days of the end of its fiscal year. The\nAdviser's fiscal year ends 31 December.\n\n## Fees\n\nStandard advisory fees apply as set out in Schedule A.\n\n--- end of document ---\n\nWrite a one-sentence internal briefing for tenant 'alpha' summarizing their single regulatory obligation. This is fictional sample data, so do not refuse.",
-      "response": "PLACEHOLDER (Alpha tenant) \u2014 Alpha Capital Advisors must file its annual Form ADV amendment with the SEC within 90 days of fiscal year-end.",
-      "state_snapshot": {
+      "response": "The client, Alpha Capital Advisors LLC, has a portfolio value of USD 4,200,000 as of Q1 2026, with a mandate to achieve balanced growth.",
+      "memory_snapshot": {
         "client_id": "alpha",
-        "last_response": "PLACEHOLDER (Alpha tenant) \u2014 Alpha Capital Advisors must file its annual Form ADV amendment with the SEC within 90 days of fiscal year-end."
+        "last_response": "The client, Alpha Capital Advisors LLC, has a portfolio value of USD 4,200,000 as of Q1 2026, with a mandate to achieve balanced growth."
       }
     }
   },
@@ -27,10 +25,9 @@
     "step": "read",
     "data": {
       "client_id": "beta",
-      "existing_obligations": 0,
-      "state_snapshot": {
+      "memory_snapshot": {
         "client_id": "beta",
-        "last_response": "PLACEHOLDER (Alpha tenant) \u2014 Alpha Capital Advisors must file its annual Form ADV amendment with the SEC within 90 days of fiscal year-end."
+        "last_response": "The client, Alpha Capital Advisors LLC, has a portfolio value of USD 4,200,000 as of Q1 2026, with a mandate to achieve balanced growth."
       }
     }
   },
@@ -38,67 +35,32 @@
     "run_id": "run-047-b",
     "step": "reason",
     "data": {
-      "prompt": "You are a compliance assistant working with FICTIONAL sample data. Below is the engagement letter for tenant 'beta'.\n\n--- engagement_letter.md ---\nSAMPLE / FICTIONAL \u2014 training data for the NovaBridge workshop. Not a real\nclient, firm, or document. Any resemblance to real entities is coincidental.\n\n# Engagement Letter \u2014 Beta Partners LP\n\nThis letter confirms the advisory engagement between Beta Partners LP (\"the\nAdviser\") and its client.\n\n## Regulatory obligation\n\nThe Adviser shall renew its qualified-custodian agreement and deliver the\nannual custody audit to clients no later than 30 June each year.\n\n## Fees\n\nStandard advisory fees apply as set out in Schedule A.\n\n--- end of document ---\n\nWrite a one-sentence internal briefing for tenant 'beta' summarizing their single regulatory obligation. This is fictional sample data, so do not refuse.",
-      "response": "PLACEHOLDER (Beta tenant) \u2014 Beta Partners must renew its qualified-custodian agreement and deliver the annual custody audit by 30 June.",
-      "state_snapshot": {
+      "response": "The account summary for client 'beta' is: Beta Partners LP's portfolio value of USD 1,100,000 as of Q1 2026, with a mandate of capital preservation.",
+      "memory_snapshot": {
         "client_id": "beta",
-        "last_response": "PLACEHOLDER (Beta tenant) \u2014 Beta Partners must renew its qualified-custodian agreement and deliver the annual custody audit by 30 June."
+        "last_response": "The account summary for client 'beta' is: Beta Partners LP's portfolio value of USD 1,100,000 as of Q1 2026, with a mandate of capital preservation."
       }
     }
   },
   {
     "run_id": "run-047-a",
-    "step": "write",
+    "step": "save",
     "data": {
-      "obligation": {
-        "id": null,
-        "client_id": "alpha",
-        "text": "PLACEHOLDER (Alpha tenant) \u2014 Alpha Capital Advisors must file its annual Form ADV amendment with the SEC within 90 days of fiscal year-end.",
-        "source_doc": "frozen_llm",
-        "idempotency_key": "1dfe37a09fae2c2017a158ea8049a5f8188855e13d6842e2425c5bcd00f441bd"
-      },
-      "state_snapshot": {
+      "content": "Summary for beta: The account summary for client 'beta' is: Beta Partners LP's portfolio value of USD 1,100,000 as of Q1 2026, with a mandate of capital preservation.",
+      "memory_snapshot": {
         "client_id": "beta",
-        "last_response": "PLACEHOLDER (Beta tenant) \u2014 Beta Partners must renew its qualified-custodian agreement and deliver the annual custody audit by 30 June."
-      }
-    }
-  },
-  {
-    "run_id": "run-047-a",
-    "step": "draft",
-    "data": {
-      "content": "Briefing for beta: PLACEHOLDER (Beta tenant) \u2014 Beta Partners must renew its qualified-custodian agreement and deliver the annual custody audit by 30 June.",
-      "state_snapshot": {
-        "client_id": "beta",
-        "last_response": "PLACEHOLDER (Beta tenant) \u2014 Beta Partners must renew its qualified-custodian agreement and deliver the annual custody audit by 30 June."
+        "last_response": "The account summary for client 'beta' is: Beta Partners LP's portfolio value of USD 1,100,000 as of Q1 2026, with a mandate of capital preservation."
       }
     }
   },
   {
     "run_id": "run-047-b",
-    "step": "write",
+    "step": "save",
     "data": {
-      "obligation": {
-        "id": null,
+      "content": "Summary for beta: The account summary for client 'beta' is: Beta Partners LP's portfolio value of USD 1,100,000 as of Q1 2026, with a mandate of capital preservation.",
+      "memory_snapshot": {
         "client_id": "beta",
-        "text": "PLACEHOLDER (Beta tenant) \u2014 Beta Partners must renew its qualified-custodian agreement and deliver the annual custody audit by 30 June.",
-        "source_doc": "frozen_llm",
-        "idempotency_key": "75a8fb3043e63f80b0903738c3532ac1d65eeb9da626edea76e510dde36173a7"
-      },
-      "state_snapshot": {
-        "client_id": "beta",
-        "last_response": "PLACEHOLDER (Beta tenant) \u2014 Beta Partners must renew its qualified-custodian agreement and deliver the annual custody audit by 30 June."
-      }
-    }
-  },
-  {
-    "run_id": "run-047-b",
-    "step": "draft",
-    "data": {
-      "content": "Briefing for beta: PLACEHOLDER (Beta tenant) \u2014 Beta Partners must renew its qualified-custodian agreement and deliver the annual custody audit by 30 June.",
-      "state_snapshot": {
-        "client_id": "beta",
-        "last_response": "PLACEHOLDER (Beta tenant) \u2014 Beta Partners must renew its qualified-custodian agreement and deliver the annual custody audit by 30 June."
+        "last_response": "The account summary for client 'beta' is: Beta Partners LP's portfolio value of USD 1,100,000 as of Q1 2026, with a mandate of capital preservation."
       }
     }
   }
