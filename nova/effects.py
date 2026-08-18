@@ -1,51 +1,42 @@
 """External side effects for the agent.
 
-`RegulatoryFilingSystem` stands in for an irreversible outbound action: filing
-an obligation with a regulator. It is backed by the record store's `filings`
-table, so what it did is visible in real SQL (`SELECT * FROM filings`).
+`PaymentGateway` stands in for an external payment processor: every `charge()`
+actually moves money. It is deliberately dumb -- it does NOT dedup, because the
+outside world does not know your intent. It is NOT your database; it keeps its
+own ledger of what really happened.
 
-It dedupes submissions by an `idempotency_key` you supply, and keeps an
-in-memory log of every attempt (filed or skipped) so the lab can narrate what
-happened. The system itself is honest infrastructure: whether you get one filing
-or two depends entirely on the key you hand it.
+That separation is the whole lesson of the Write lab: a UNIQUE constraint on
+your own `charges` table protects your records, but it cannot un-charge a card.
+Idempotency has to be enforced *before* the irreversible effect.
 """
-from dataclasses import dataclass
-
-FILED = "FILED"
-SKIPPED = "SKIPPED (already filed)"
+from dataclasses import dataclass, field
 
 
 @dataclass
-class FilingAttempt:
-    """One submission attempt and how the filing system responded."""
+class Charge:
+    """One charge that actually reached the payment processor."""
 
-    idempotency_key: str
     client_id: str
-    obligation_text: str
-    outcome: str
+    amount: int
+    memo: str
 
 
-class RegulatoryFilingSystem:
-    """Store-backed stand-in for an irreversible external filing system."""
+@dataclass
+class PaymentGateway:
+    """In-memory stand-in for an external, irreversible payment processor."""
 
-    def __init__(self, store) -> None:
-        self.store = store
-        self.attempts: list[FilingAttempt] = []
+    ledger: list[Charge] = field(default_factory=list)
 
-    def submit(self, idempotency_key: str, client_id: str, obligation_text: str) -> str:
-        """Submit an obligation for filing.
+    def charge(self, client_id: str, amount: int, memo: str) -> Charge:
+        """Charge the client. This always executes -- the money moves. No dedup."""
+        charge = Charge(client_id=client_id, amount=amount, memo=memo)
+        self.ledger.append(charge)
+        return charge
 
-        If `idempotency_key` was already filed, this is a no-op and returns
-        SKIPPED. Otherwise it files (a row in `filings`) and returns FILED.
-        Every call is recorded in `attempts` regardless of outcome.
-        """
-        already_filed = self.store.filing_exists(idempotency_key)
-        outcome = SKIPPED if already_filed else FILED
-        self.attempts.append(FilingAttempt(idempotency_key, client_id, obligation_text, outcome))
-        if not already_filed:
-            self.store.insert_filing(idempotency_key, client_id, obligation_text)
-        return outcome
+    def charges_for(self, client_id: str) -> list[Charge]:
+        """Return every charge the processor actually applied for a client."""
+        return [c for c in self.ledger if c.client_id == client_id]
 
-    def filings(self) -> list[dict]:
-        """Return the distinct filings that actually reached the regulator."""
-        return self.store.get_filings()
+    def total_charged(self, client_id: str) -> int:
+        """Total amount actually charged to a client (double-charges included)."""
+        return sum(c.amount for c in self.charges_for(client_id))

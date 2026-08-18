@@ -45,10 +45,10 @@ def check_llm() -> None:
         if not out:
             raise RuntimeError("Ollama returned an empty response")
     else:  # frozen — confirm a known fixture loads
-        from nova.agent import extraction_prompt, load_document
+        from nova.agent import load_document, payment_memo_prompt
 
-        doc = load_document("alpha", "engagement_letter.md")
-        llm.complete(extraction_prompt("alpha", "engagement_letter.md", doc, 1))
+        doc = load_document("alpha", "billing_instruction.md")
+        llm.complete(payment_memo_prompt("alpha", "Q1-2026", doc, 1))
 
 
 def check_database() -> None:
@@ -56,13 +56,13 @@ def check_database() -> None:
 
     store = get_store()
     store.init_schema()
-    store.get_filings()  # a real query against the configured backend
+    store.get_charges()  # a real query against the configured backend
     store.close()
 
 
 def check_smoke_test() -> None:
-    from nova.agent import extraction_prompt, load_document
-    from nova.effects import RegulatoryFilingSystem
+    from nova.agent import load_document, payment_memo_prompt
+    from nova.effects import PaymentGateway
     from nova.llm import get_llm
     from nova.store import get_store
 
@@ -70,13 +70,14 @@ def check_smoke_test() -> None:
     store.init_schema()
     store.reset_demo()
     llm = get_llm()
-    filing = RegulatoryFilingSystem(store)
+    gateway = PaymentGateway()
 
-    doc = load_document("alpha", "engagement_letter.md")
-    text = llm.complete(extraction_prompt("alpha", "engagement_letter.md", doc, 1))
-    filing.submit("preflight-key", "alpha", text)
-    if len(filing.filings()) != 1:
-        raise RuntimeError("smoke test did not record exactly one filing")
+    doc = load_document("alpha", "billing_instruction.md")
+    memo = llm.complete(payment_memo_prompt("alpha", "Q1-2026", doc, 1))
+    gateway.charge("alpha", 2500, memo)
+    store.record_charge("preflight-key", "alpha", 2500)
+    if len(gateway.charges_for("alpha")) != 1 or not store.already_charged("preflight-key"):
+        raise RuntimeError("smoke test did not complete a single charge")
     store.reset_demo()
     store.close()
 
@@ -91,7 +92,7 @@ def main() -> None:
         ("dependencies importable", check_dependencies),
         (f"LLM reachable ({backend})", check_llm),
         (f"database reachable ({db})", check_database),
-        ("agent smoke test (retrieve → reason → file)", check_smoke_test),
+        ("agent smoke test (retrieve → reason → charge)", check_smoke_test),
     ]
     failures = []
     for name, check in checks:

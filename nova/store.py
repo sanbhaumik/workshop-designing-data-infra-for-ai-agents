@@ -27,8 +27,8 @@ CREATE TABLE IF NOT EXISTS obligations (
     client_id TEXT NOT NULL, text TEXT NOT NULL, source_doc TEXT, idempotency_key TEXT);
 CREATE TABLE IF NOT EXISTS briefings (
     client_id TEXT PRIMARY KEY, content TEXT, version INTEGER NOT NULL DEFAULT 0);
-CREATE TABLE IF NOT EXISTS filings (
-    idempotency_key TEXT PRIMARY KEY, client_id TEXT NOT NULL, obligation_text TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS charges (
+    idempotency_key TEXT PRIMARY KEY, client_id TEXT NOT NULL, amount INTEGER NOT NULL);
 """
 
 POSTGRES_SCHEMA = """
@@ -40,11 +40,11 @@ CREATE TABLE IF NOT EXISTS obligations (
     client_id TEXT NOT NULL, text TEXT NOT NULL, source_doc TEXT, idempotency_key TEXT);
 CREATE TABLE IF NOT EXISTS briefings (
     client_id TEXT PRIMARY KEY, content TEXT, version INTEGER NOT NULL DEFAULT 0);
-CREATE TABLE IF NOT EXISTS filings (
-    idempotency_key TEXT PRIMARY KEY, client_id TEXT NOT NULL, obligation_text TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS charges (
+    idempotency_key TEXT PRIMARY KEY, client_id TEXT NOT NULL, amount INTEGER NOT NULL);
 """
 
-DEMO_TABLES = ("filings", "obligations", "briefings")
+DEMO_TABLES = ("charges", "obligations", "briefings")
 
 
 class RecordStore:
@@ -101,23 +101,25 @@ class RecordStore:
         rows = self._rows("SELECT * FROM briefings WHERE client_id = ?", (client_id,))
         return rows[0] if rows else {}
 
-    def filing_exists(self, idempotency_key: str) -> bool:
-        """True if an obligation was already filed under this idempotency key."""
-        rows = self._rows("SELECT 1 FROM filings WHERE idempotency_key = ?", (idempotency_key,))
+    def already_charged(self, idempotency_key: str) -> bool:
+        """True if a charge was already recorded under this idempotency key."""
+        rows = self._rows("SELECT 1 FROM charges WHERE idempotency_key = ?", (idempotency_key,))
         return bool(rows)
 
-    def insert_filing(self, idempotency_key: str, client_id: str, obligation_text: str) -> None:
-        """Record a filing that reached the regulator."""
+    def record_charge(self, idempotency_key: str, client_id: str, amount: int) -> None:
+        """Record a charge. The key is unique, so a duplicate record is ignored
+        (the table looks idempotent) -- but that does not stop the gateway."""
         self._exec(
-            "INSERT INTO filings (idempotency_key, client_id, obligation_text) VALUES (?, ?, ?)",
-            (idempotency_key, client_id, obligation_text),
+            "INSERT INTO charges (idempotency_key, client_id, amount) VALUES (?, ?, ?) "
+            "ON CONFLICT(idempotency_key) DO NOTHING",
+            (idempotency_key, client_id, amount),
         )
 
-    def get_filings(self, client_id: str | None = None) -> list[dict]:
-        """Return distinct filings, optionally filtered by client."""
+    def get_charges(self, client_id: str | None = None) -> list[dict]:
+        """Return recorded charges, optionally filtered by client."""
         if client_id is None:
-            return self._rows("SELECT * FROM filings")
-        return self._rows("SELECT * FROM filings WHERE client_id = ?", (client_id,))
+            return self._rows("SELECT * FROM charges")
+        return self._rows("SELECT * FROM charges WHERE client_id = ?", (client_id,))
 
     def reset_demo(self) -> None:
         """Clear the tables the labs write to, for a clean before/after run."""
@@ -188,23 +190,25 @@ class PostgresStore:
         rows = self._rows("SELECT * FROM briefings WHERE client_id = %s", (client_id,))
         return rows[0] if rows else {}
 
-    def filing_exists(self, idempotency_key: str) -> bool:
-        """True if an obligation was already filed under this idempotency key."""
-        rows = self._rows("SELECT 1 FROM filings WHERE idempotency_key = %s", (idempotency_key,))
+    def already_charged(self, idempotency_key: str) -> bool:
+        """True if a charge was already recorded under this idempotency key."""
+        rows = self._rows("SELECT 1 FROM charges WHERE idempotency_key = %s", (idempotency_key,))
         return bool(rows)
 
-    def insert_filing(self, idempotency_key: str, client_id: str, obligation_text: str) -> None:
-        """Record a filing that reached the regulator."""
+    def record_charge(self, idempotency_key: str, client_id: str, amount: int) -> None:
+        """Record a charge. The key is unique, so a duplicate record is ignored
+        (the table looks idempotent) -- but that does not stop the gateway."""
         self._exec(
-            "INSERT INTO filings (idempotency_key, client_id, obligation_text) VALUES (%s, %s, %s)",
-            (idempotency_key, client_id, obligation_text),
+            "INSERT INTO charges (idempotency_key, client_id, amount) VALUES (%s, %s, %s) "
+            "ON CONFLICT (idempotency_key) DO NOTHING",
+            (idempotency_key, client_id, amount),
         )
 
-    def get_filings(self, client_id: str | None = None) -> list[dict]:
-        """Return distinct filings, optionally filtered by client."""
+    def get_charges(self, client_id: str | None = None) -> list[dict]:
+        """Return recorded charges, optionally filtered by client."""
         if client_id is None:
-            return self._rows("SELECT * FROM filings")
-        return self._rows("SELECT * FROM filings WHERE client_id = %s", (client_id,))
+            return self._rows("SELECT * FROM charges")
+        return self._rows("SELECT * FROM charges WHERE client_id = %s", (client_id,))
 
     def reset_demo(self) -> None:
         """Clear the tables the labs write to, for a clean before/after run."""

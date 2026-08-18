@@ -1,27 +1,33 @@
 """Module 02 — Write Problems: your fix.
 
-Edit ONLY this file. You change one function: `obligation_identity`.
+Edit ONLY this file. You change one function: `charge_client_fee`.
 
-Background: the agent files each obligation with an external regulator (an
-irreversible side effect). Before filing, the runner asks this function for an
-idempotency key. If two runs produce the same key, the second filing is
-skipped. If they produce different keys, the regulator receives two filings for
-the same obligation.
+The agent charges a client's advisory fee through a payment gateway. Agents
+retry (a timeout, a transient error), so `charge_client_fee` can be called more
+than once for the same fee. It must charge the client at most ONCE.
 
-The catch: the agent is non-deterministic. Two runs over the SAME client and
-SAME document produce differently-worded `obligation_text`. So a key derived
-from the text changes every run -- and the guard fails.
+The catch you'll discover in the lab: putting a unique key on the `charges`
+table makes the *record* idempotent, but it does not un-charge the card. The
+gateway is the outside world. You have to stop the charge *before* it happens.
 """
 import hashlib
 
 
-def obligation_identity(client_id: str, source_doc: str, obligation_text: str) -> str:
-    """Return a STABLE idempotency key identifying this obligation."""
-    # TODO: Two runs of the agent produce DIFFERENT obligation_text for the
-    # SAME underlying obligation. Derive the key from the agent's INTENT -- the
-    # inputs it committed to before generating (client_id, source_doc) -- NOT
-    # from obligation_text, which changes every run.
-    #
-    # Right now this keys on the variable text, so every run gets a different
-    # key and the regulator is filed with twice.
-    return hashlib.sha256(obligation_text.encode("utf-8")).hexdigest()
+def charge_key(client_id: str, billing_period: str) -> str:
+    """A stable idempotency key for one fee: the client and the billing period.
+
+    This is the agent's INTENT -- it's the same on every retry, unlike the memo
+    text the model writes, which changes each run.
+    """
+    return hashlib.sha256(f"{client_id}|{billing_period}".encode("utf-8")).hexdigest()
+
+
+def charge_client_fee(gateway, store, client_id: str, billing_period: str, amount: int, memo: str) -> None:
+    """Charge the client's advisory fee -- at most once per (client, period)."""
+    key = charge_key(client_id, billing_period)
+    # TODO: before charging, check whether this fee was already charged
+    # (store.already_charged(key)) and RETURN without charging if it was.
+    # Right now this charges the gateway every time it's called -- so a retry
+    # charges the client twice, even though the `charges` table only keeps one row.
+    gateway.charge(client_id, amount, memo)
+    store.record_charge(key, client_id, amount)

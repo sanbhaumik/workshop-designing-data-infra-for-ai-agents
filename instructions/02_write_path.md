@@ -2,58 +2,48 @@
 
 ## What you'll learn
 
-An AI agent is a **non-deterministic producer**: run it twice on the same input
-and it produces differently-worded output. When each run triggers an
-**irreversible side effect** — here, filing an obligation with a regulator —
-naive deduplication fails, because the two outputs don't match byte-for-byte. A
-database `UNIQUE` constraint on the text can't save you. The fix is to derive
-your idempotency identity from the agent's **intent** (its inputs), not its
-output, and enforce it at the side-effect boundary.
+An AI agent is a **non-deterministic producer of irreversible side effects**.
+It charges a client's advisory fee; agents retry, so the charge can fire twice.
+The instinctive fix — a `UNIQUE` constraint on your table — makes the *record*
+idempotent but does **not** un-charge the card: the payment gateway is the
+outside world, and the money already moved. Idempotency has to be enforced
+**before** the effect, keyed on the agent's stable intent (client + period), not
+on the model's output, which changes every run.
 
-## Prerequisites
+The Colab notebook (`colab/02_write_path.ipynb`) walks this inline: you call the
+agent yourself, watch it double-charge, see your DB stay clean while the gateway
+charges twice, then guard the effect and watch the retry skip.
 
-- Environment ready: `python preflight.py` prints a green **GREEN**.
-- Codespaces: open a terminal in your codespace.
-- Colab: open `colab/02_write_path.ipynb`, run the first cell, then follow along
-  with the notebook's code cells in place of a terminal.
+## Steps (terminal)
 
-## Steps
-
-1. Run the agent twice:
+1. Run the agent and its retry:
    ```bash
    python modules/02_write_path/naive.py
    ```
-2. Read the output carefully:
-   - Each **run** shows four steps: RETRIEVE → REASON → IDENTITY → FILE.
-   - The **REASON** step produces *different text* on run #1 vs run #2 — the
-     same obligation, worded two ways.
-   - The regulator table at the bottom shows **two filings** for one obligation.
-3. Open `modules/02_write_path/your_fix.py`. Edit the one function,
-   `obligation_identity`. It currently keys on `obligation_text` (which changes
-   every run). Change it to key on the agent's stable intent — the inputs
-   `client_id` and `source_doc`.
-4. Run the test:
+2. Read the two tables: your `charges` table has **one** row, the payment
+   gateway charged the client **twice** ($5,000). Your constraint protected your
+   records, not the card.
+3. Confirm the single clean row in the real database:
+   ```bash
+   psql "$DATABASE_URL" -c "SELECT client_id, amount FROM charges;"
+   ```
+4. Open `modules/02_write_path/your_fix.py` and edit `charge_client_fee`: before
+   `gateway.charge(...)`, check `store.already_charged(key)` and `return` if the
+   fee was already charged.
+5. Run the test:
    ```bash
    pytest modules/02_write_path/test_write.py -v
    ```
-5. There are two tests:
-   - `test_two_runs_really_produce_different_text` — passes from the start; it
-     proves the two runs genuinely diverge (otherwise the lab would be trivial).
-   - `test_retry_files_obligation_only_once` — this is the one you're fixing.
-6. Done when both show `2 passed`.
-7. See it land. Run the before/after reveal:
+6. Done when both tests show `2 passed`. Then run the before/after:
    ```bash
    python modules/02_write_path/compare.py
    ```
-   You'll see two tables. **BEFORE** (naive identity) — two different keys, both
-   `FILED`. **AFTER** (your fix) — the *same* key on both runs, so the second is
-   `SKIPPED`. Same non-deterministic model; deterministic identity.
 
 ## Files
 
 | File | Edit? |
 |---|---|
-| `modules/02_write_path/your_fix.py` | Yes — the one function `obligation_identity` |
+| `modules/02_write_path/your_fix.py` | Yes — the one function `charge_client_fee` |
 | `modules/02_write_path/naive.py` | No (read it — it shows how the agent runs) |
 | `modules/02_write_path/compare.py` | No (the before/after reveal) |
 | `modules/02_write_path/test_write.py` | No |
@@ -61,15 +51,15 @@ output, and enforce it at the side-effect boundary.
 
 ## Think about it
 
-- Why would a `UNIQUE` constraint on the obligation text *not* have prevented
-  the double filing?
-- Your fix keys on `(client_id, source_doc)`. In a real system where one
-  document yields several obligations, what would you add to the key to keep
-  each obligation distinct — and why is that harder than it sounds?
+- Why does a `UNIQUE` constraint on the `charges` table not prevent the double
+  charge?
+- The guard is keyed on `(client, period)`. Where does that key come from in a
+  real system, and what would you do if the same fee could legitimately be
+  charged twice (e.g. a genuine re-bill)?
 
 ## Troubleshooting
 
 - `pytest` not found → re-run `python preflight.py`; if it's not GREEN,
   dependencies didn't install correctly.
-- Test still fails → make sure your key does **not** depend on `obligation_text`
-  in any way.
+- Test still fails → make sure you `return` **before** `gateway.charge(...)`,
+  not after.

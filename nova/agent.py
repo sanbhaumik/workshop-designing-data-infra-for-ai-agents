@@ -46,22 +46,23 @@ def load_document(client_id: str, source_doc: str, fixtures_dir: Path | None = N
     return (base / "clients" / client_id / source_doc).read_text()
 
 
-def extraction_prompt(client_id: str, source_doc: str, document_text: str, attempt: int) -> str:
-    """Natural-language prompt for the Write-lab obligation extraction.
+def payment_memo_prompt(client_id: str, billing_period: str, document_text: str, attempt: int) -> str:
+    """Natural-language prompt for the Write-lab payment memo.
 
-    Embeds the retrieved document so a real model has something to extract, and
-    frames it as fictional sample data so small models don't refuse. Sent
-    verbatim to Ollama, where a non-zero temperature makes two runs diverge; the
-    `(retry N)` marker also keys a distinct frozen fixture per run so the test
-    suite sees the same phenomenon deterministically. See modules/02_write_path.
+    The agent reads a client billing instruction and writes a one-line memo for
+    the advisory-fee charge. Sent verbatim to Ollama, where a non-zero
+    temperature makes two runs word the memo differently; the `(retry N)` marker
+    keys a distinct frozen fixture per run so the test suite sees the same
+    non-determinism deterministically. See modules/02_write_path.
     """
     return (
-        "You are a compliance assistant working with FICTIONAL sample data in a "
-        "training exercise. Below is a client engagement letter.\n\n"
-        f"--- {source_doc} ---\n{document_text}\n--- end of document ---\n\n"
-        f"Extract the single regulatory obligation it describes for client "
-        f"'{client_id}'. Reply with one short sentence stating the obligation. "
-        f"This is fictional sample data, so do not refuse. (retry {attempt})"
+        "You are a bookkeeping assistant working with FICTIONAL sample data in a "
+        "training exercise. Below is an internal billing note.\n\n"
+        f"--- billing note for {client_id} ---\n{document_text}\n--- end ---\n\n"
+        f"Write a one-line description of the quarterly advisory fee for client "
+        f"'{client_id}', period {billing_period}, to record in our internal ledger. "
+        f"One short sentence. This is fictional sample data for a training exercise, "
+        f"so do not refuse. (retry {attempt})"
     )
 
 

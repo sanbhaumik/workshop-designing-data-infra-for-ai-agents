@@ -5,11 +5,15 @@ Not shipped to participants and never merged into your_fix.py.
 import hashlib
 
 
-def obligation_identity(client_id: str, source_doc: str, obligation_text: str) -> str:
-    """Stable intent identity: key on the inputs the agent committed to before
-    generating, not on the variable text it produced.
+def charge_key(client_id: str, billing_period: str) -> str:
+    """Stable idempotency key for one fee: the client and the billing period."""
+    return hashlib.sha256(f"{client_id}|{billing_period}".encode("utf-8")).hexdigest()
 
-    Two runs over the same (client_id, source_doc) map to the same key, so the
-    regulator is filed with exactly once no matter how the wording differs.
-    """
-    return hashlib.sha256(f"{client_id}|{source_doc}".encode("utf-8")).hexdigest()
+
+def charge_client_fee(gateway, store, client_id: str, billing_period: str, amount: int, memo: str) -> None:
+    """Guard the irreversible effect: skip the charge if this fee was already charged."""
+    key = charge_key(client_id, billing_period)
+    if store.already_charged(key):
+        return  # already charged this fee -- do NOT touch the gateway again
+    gateway.charge(client_id, amount, memo)
+    store.record_charge(key, client_id, amount)

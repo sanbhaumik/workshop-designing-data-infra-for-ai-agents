@@ -1,0 +1,4 @@
+{
+  "prompt": "You are a bookkeeping assistant working with FICTIONAL sample data in a training exercise. Below is an internal billing note.\n\n--- billing note for alpha ---\nSAMPLE / FICTIONAL \u2014 training data for the NovaBridge workshop. Not a real\nclient, firm, or document.\n\n# Billing Note \u2014 Alpha Capital Advisors LLC\n\nPer the management agreement, Alpha Capital Advisors LLC owes its quarterly\nadvisory fee of USD 2,500 for the current billing period.\n\n--- end ---\n\nWrite a one-line description of the quarterly advisory fee for client 'alpha', period Q1-2026, to record in our internal ledger. One short sentence. This is fictional sample data for a training exercise, so do not refuse. (retry 2)",
+  "response": "The quarterly advisory fee for client 'alpha' for the period Q1-2026 is USD 2,500. \n\n(Note: This fee is payable quarterly, so it will be recorded for each quarter individually, e.g. Q1, Q2, Q3, Q4.)"
+}
