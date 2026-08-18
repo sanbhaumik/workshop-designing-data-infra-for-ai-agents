@@ -72,8 +72,11 @@ def test_store_set_briefing_is_last_write_wins(tmp_path):
 
 
 def test_frozen_llm_returns_known_response():
+    from nova.agent import briefing_prompt, load_document
+
     llm = FrozenLLM(FIXTURES / "llm_responses")
-    response = llm.complete("client:alpha")
+    doc = load_document("alpha", "engagement_letter.md")
+    response = llm.complete(briefing_prompt("alpha", "engagement_letter.md", doc))
     assert response.startswith("PLACEHOLDER")
 
 
@@ -148,10 +151,14 @@ def _build_agent(tmp_path, name: str) -> tuple[Agent, RecordStore]:
 
 
 def test_agent_run_produces_deterministic_briefing(tmp_path):
+    from nova.agent import briefing_prompt, load_document
+
     agent, _ = _build_agent(tmp_path, "agent_run")
     briefing = agent.run("alpha", "run-1")
+    doc = load_document("alpha", "engagement_letter.md")
+    expected = format_briefing_content("alpha", agent.llm.complete(briefing_prompt("alpha", "engagement_letter.md", doc)))
     assert briefing.client_id == "alpha"
-    assert briefing.content == format_briefing_content("alpha", agent.llm.complete("client:alpha"))
+    assert briefing.content == expected
     assert len(briefing.obligations) == 1
 
 

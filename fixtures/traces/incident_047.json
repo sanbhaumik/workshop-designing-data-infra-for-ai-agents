@@ -14,11 +14,11 @@
     "run_id": "run-047-a",
     "step": "reason",
     "data": {
-      "prompt": "client:alpha",
-      "response": "PLACEHOLDER \u2014 replace with real content: Alpha obligation \u2014 file Form ADV amendment by March 31.",
+      "prompt": "You are a compliance assistant working with FICTIONAL sample data. Below is the engagement letter for tenant 'alpha'.\n\n--- engagement_letter.md ---\nSAMPLE / FICTIONAL \u2014 training data for the NovaBridge workshop. Not a real\nclient, firm, or document. Any resemblance to real entities is coincidental.\n\n# Engagement Letter \u2014 Alpha Capital Advisors LLC\n\nThis letter confirms the advisory engagement between Alpha Capital Advisors LLC\n(\"the Adviser\") and its client.\n\n## Regulatory obligation\n\nThe Adviser shall file its annual Form ADV amendment with the U.S. Securities\nand Exchange Commission within 90 days of the end of its fiscal year. The\nAdviser's fiscal year ends 31 December.\n\n## Fees\n\nStandard advisory fees apply as set out in Schedule A.\n\n--- end of document ---\n\nWrite a one-sentence internal briefing for tenant 'alpha' summarizing their single regulatory obligation. This is fictional sample data, so do not refuse.",
+      "response": "PLACEHOLDER (Alpha tenant) \u2014 Alpha Capital Advisors must file its annual Form ADV amendment with the SEC within 90 days of fiscal year-end.",
       "state_snapshot": {
         "client_id": "alpha",
-        "last_response": "PLACEHOLDER \u2014 replace with real content: Alpha obligation \u2014 file Form ADV amendment by March 31."
+        "last_response": "PLACEHOLDER (Alpha tenant) \u2014 Alpha Capital Advisors must file its annual Form ADV amendment with the SEC within 90 days of fiscal year-end."
       }
     }
   },
@@ -30,7 +30,7 @@
       "existing_obligations": 0,
       "state_snapshot": {
         "client_id": "beta",
-        "last_response": "PLACEHOLDER \u2014 replace with real content: Alpha obligation \u2014 file Form ADV amendment by March 31."
+        "last_response": "PLACEHOLDER (Alpha tenant) \u2014 Alpha Capital Advisors must file its annual Form ADV amendment with the SEC within 90 days of fiscal year-end."
       }
     }
   },
@@ -38,11 +38,11 @@
     "run_id": "run-047-b",
     "step": "reason",
     "data": {
-      "prompt": "client:beta",
-      "response": "PLACEHOLDER \u2014 replace with real content: Beta obligation \u2014 renew custody agreement by June 15.",
+      "prompt": "You are a compliance assistant working with FICTIONAL sample data. Below is the engagement letter for tenant 'beta'.\n\n--- engagement_letter.md ---\nSAMPLE / FICTIONAL \u2014 training data for the NovaBridge workshop. Not a real\nclient, firm, or document. Any resemblance to real entities is coincidental.\n\n# Engagement Letter \u2014 Beta Partners LP\n\nThis letter confirms the advisory engagement between Beta Partners LP (\"the\nAdviser\") and its client.\n\n## Regulatory obligation\n\nThe Adviser shall renew its qualified-custodian agreement and deliver the\nannual custody audit to clients no later than 30 June each year.\n\n## Fees\n\nStandard advisory fees apply as set out in Schedule A.\n\n--- end of document ---\n\nWrite a one-sentence internal briefing for tenant 'beta' summarizing their single regulatory obligation. This is fictional sample data, so do not refuse.",
+      "response": "PLACEHOLDER (Beta tenant) \u2014 Beta Partners must renew its qualified-custodian agreement and deliver the annual custody audit by 30 June.",
       "state_snapshot": {
         "client_id": "beta",
-        "last_response": "PLACEHOLDER \u2014 replace with real content: Beta obligation \u2014 renew custody agreement by June 15."
+        "last_response": "PLACEHOLDER (Beta tenant) \u2014 Beta Partners must renew its qualified-custodian agreement and deliver the annual custody audit by 30 June."
       }
     }
   },
@@ -53,13 +53,13 @@
       "obligation": {
         "id": null,
         "client_id": "alpha",
-        "text": "PLACEHOLDER \u2014 replace with real content: Alpha obligation \u2014 file Form ADV amendment by March 31.",
+        "text": "PLACEHOLDER (Alpha tenant) \u2014 Alpha Capital Advisors must file its annual Form ADV amendment with the SEC within 90 days of fiscal year-end.",
         "source_doc": "frozen_llm",
-        "idempotency_key": "72463c75010289c648e26e12ef7c8599bed6782326b1443d8856c6a9ca027ae7"
+        "idempotency_key": "1dfe37a09fae2c2017a158ea8049a5f8188855e13d6842e2425c5bcd00f441bd"
       },
       "state_snapshot": {
         "client_id": "beta",
-        "last_response": "PLACEHOLDER \u2014 replace with real content: Beta obligation \u2014 renew custody agreement by June 15."
+        "last_response": "PLACEHOLDER (Beta tenant) \u2014 Beta Partners must renew its qualified-custodian agreement and deliver the annual custody audit by 30 June."
       }
     }
   },
@@ -67,10 +67,10 @@
     "run_id": "run-047-a",
     "step": "draft",
     "data": {
-      "content": "Briefing for beta: PLACEHOLDER \u2014 replace with real content: Beta obligation \u2014 renew custody agreement by June 15.",
+      "content": "Briefing for beta: PLACEHOLDER (Beta tenant) \u2014 Beta Partners must renew its qualified-custodian agreement and deliver the annual custody audit by 30 June.",
       "state_snapshot": {
         "client_id": "beta",
-        "last_response": "PLACEHOLDER \u2014 replace with real content: Beta obligation \u2014 renew custody agreement by June 15."
+        "last_response": "PLACEHOLDER (Beta tenant) \u2014 Beta Partners must renew its qualified-custodian agreement and deliver the annual custody audit by 30 June."
       }
     }
   },
@@ -81,13 +81,13 @@
       "obligation": {
         "id": null,
         "client_id": "beta",
-        "text": "PLACEHOLDER \u2014 replace with real content: Beta obligation \u2014 renew custody agreement by June 15.",
+        "text": "PLACEHOLDER (Beta tenant) \u2014 Beta Partners must renew its qualified-custodian agreement and deliver the annual custody audit by 30 June.",
         "source_doc": "frozen_llm",
-        "idempotency_key": "c852fe37e8c3d9394de0911cddadd6f13a73c858ec2bf652a281a143c7f1afa2"
+        "idempotency_key": "75a8fb3043e63f80b0903738c3532ac1d65eeb9da626edea76e510dde36173a7"
       },
       "state_snapshot": {
         "client_id": "beta",
-        "last_response": "PLACEHOLDER \u2014 replace with real content: Beta obligation \u2014 renew custody agreement by June 15."
+        "last_response": "PLACEHOLDER (Beta tenant) \u2014 Beta Partners must renew its qualified-custodian agreement and deliver the annual custody audit by 30 June."
       }
     }
   },
@@ -95,10 +95,10 @@
     "run_id": "run-047-b",
     "step": "draft",
     "data": {
-      "content": "Briefing for beta: PLACEHOLDER \u2014 replace with real content: Beta obligation \u2014 renew custody agreement by June 15.",
+      "content": "Briefing for beta: PLACEHOLDER (Beta tenant) \u2014 Beta Partners must renew its qualified-custodian agreement and deliver the annual custody audit by 30 June.",
       "state_snapshot": {
         "client_id": "beta",
-        "last_response": "PLACEHOLDER \u2014 replace with real content: Beta obligation \u2014 renew custody agreement by June 15."
+        "last_response": "PLACEHOLDER (Beta tenant) \u2014 Beta Partners must renew its qualified-custodian agreement and deliver the annual custody audit by 30 June."
       }
     }
   }

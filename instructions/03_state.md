@@ -10,23 +10,28 @@
 
 ## What you'll learn
 
-Two agent runs for different clients are interleaved while sharing one mutable
-state object. Client Beta's run overwrites the shared state, and client Alpha's
-run then drafts its briefing from Beta's data — a **cross-client data leak**.
-The fix is to isolate working state per run. The second task adds **recovery**:
-a crashed run must resume from a checkpoint instead of redoing (and
-duplicating) work it already completed.
+Two agent runs serve two different **tenants** while sharing one mutable memory
+object. Tenant Beta's run overwrites the shared memory, and tenant Alpha's run
+then drafts its briefing from Beta's data — a **cross-tenant data leak**, the
+kind that shows up in a multi-tenant agent system when memory or retrieved
+context isn't isolated. The fix is to namespace memory per run/tenant. The
+second task adds **recovery**: a crashed run must resume from a checkpoint
+instead of redoing (and duplicating) work it already completed.
 
 ## Steps
 
-1. Run the naive path and watch the contamination happen step by step:
+1. Run the naive path and watch the leak happen step by step:
    ```bash
    python modules/03_state/naive_state.py
    ```
 2. Read the **interleaved steps** table. Each row is one agent action. Watch the
-   `state.client_id` column: at steps flagged in red, run-a (which owns Alpha)
-   is acting while the shared state already says `beta`. That's the leak — and
-   Alpha's final briefing ends up containing Beta's data.
+   `memory.tenant` column: at steps flagged in red, run-a (which serves Alpha)
+   is acting while the shared memory already says `beta`. That's the leak — and
+   Alpha's final briefing ends up containing Beta's obligation.
+3. See the leaked row in the real database:
+   ```bash
+   psql "$DATABASE_URL" -c "SELECT client_id, content FROM briefings;"
+   ```
 3. Open `modules/03_state/your_fix.py`. There are two tasks in this file:
    - **Task 1:** fix `IsolatedState.get` / `IsolatedState.set` so state is
      namespaced by `run_id`.

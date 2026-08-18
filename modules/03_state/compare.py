@@ -1,10 +1,13 @@
 """Module 03 — State, Memory & Recovery: the before/after reveal.
 
-Runs both of the lab's scenarios with the naive baseline and with YOUR fix
-(whatever your_fix.py currently contains), and prints the results side by side:
+Runs both of the lab's scenarios against the real store with the naive baseline
+and with YOUR fix, and prints the results side by side:
 
-  1. Isolation — does Alpha's briefing stay free of Beta's data?
+  1. Isolation — does tenant Alpha's briefing stay free of tenant Beta's data?
   2. Recovery  — after a crash mid-run and a resume, how many obligations land?
+
+Uses the real model (NOVA_LLM) and real database (DATABASE_URL). The shared
+database is reset between phases so counts stay clean.
 
 Run this after you've edited your_fix.py:
     `python modules/03_state/compare.py`
@@ -21,9 +24,9 @@ from rich.console import Console
 from rich.table import Table
 
 from nova.agent import Agent, SharedState
-from nova.frozen_llm import FrozenLLM
+from nova.llm import get_llm
 from nova.scheduler import Scheduler
-from nova.store import RecordStore
+from nova.store import get_store
 from nova.trace import Tracer
 from your_fix import IsolatedState, run_recoverable
 
@@ -35,24 +38,9 @@ CONTAMINATION_SCRIPT = [
 ]
 
 
-def _new_agent(tmp: Path, name: str, state) -> tuple[Agent, RecordStore]:
-    store = RecordStore(tmp / f"{name}.db")
-    store.init_schema()
-    tracer = Tracer(tmp / f"{name}.jsonl")
-    llm = FrozenLLM(FIXTURES / "llm_responses")
-    return Agent(store, llm, FIXTURES / "embeddings", tracer, state), store
-
-
-# ---------------------------------------------------------------------------
-# Scenario 1 — isolation
-# ---------------------------------------------------------------------------
-
-
-def run_isolation(state, tmp: Path, name: str) -> str:
-    """Run the two interleaved clients sharing `state`; return Alpha's briefing."""
-    llm = FrozenLLM(FIXTURES / "llm_responses")
-    store = RecordStore(tmp / f"{name}.db")
-    store.init_schema()
+def run_isolation(state, llm, store, tmp: Path, name: str) -> str:
+    """Run the two interleaved tenants sharing `state`; return Alpha's briefing."""
+    store.reset_demo()
     tracer = Tracer(tmp / f"{name}.jsonl")
     agent_alpha = Agent(store, llm, FIXTURES / "embeddings", tracer, state)
     agent_beta = Agent(store, llm, FIXTURES / "embeddings", tracer, state)
@@ -63,11 +51,6 @@ def run_isolation(state, tmp: Path, name: str) -> str:
     return store.get_briefing("alpha").get("content") or ""
 
 
-# ---------------------------------------------------------------------------
-# Scenario 2 — recovery
-# ---------------------------------------------------------------------------
-
-
 def naive_run_recoverable(agent: Agent, client_id: str, run_id: str, kill_after: str | None = None):
     """Baseline: on resume, re-runs the whole agent from scratch (redoing writes)."""
     for checkpoint in agent.run_steps(client_id, run_id):
@@ -76,9 +59,11 @@ def naive_run_recoverable(agent: Agent, client_id: str, run_id: str, kill_after:
     return True
 
 
-def run_recovery(recover_fn, tmp: Path, name: str) -> int:
+def run_recovery(recover_fn, llm, store, tmp: Path, name: str) -> int:
     """Crash the run after 'write', resume it, and count Alpha's obligations."""
-    agent, store = _new_agent(tmp, name, SharedState())
+    store.reset_demo()
+    tracer = Tracer(tmp / f"{name}.jsonl")
+    agent = Agent(store, llm, FIXTURES / "embeddings", tracer, SharedState())
     recover_fn(agent, "alpha", "run-recover", kill_after="write")  # crash
     recover_fn(agent, "alpha", "run-recover")  # resume
     return len(store.get_obligations("alpha"))
@@ -86,20 +71,22 @@ def run_recovery(recover_fn, tmp: Path, name: str) -> int:
 
 def main() -> None:
     console = Console()
+    llm = get_llm()
+    store = get_store()
+    store.init_schema()
 
     with tempfile.TemporaryDirectory() as tmp_str:
         tmp = Path(tmp_str)
-        before_alpha = run_isolation(SharedState(), tmp, "iso_before")
-        after_alpha = run_isolation(IsolatedState(), tmp, "iso_after")
-        before_obs = run_recovery(naive_run_recoverable, tmp, "rec_before")
-        after_obs = run_recovery(run_recoverable, tmp, "rec_after")
+        before_alpha = run_isolation(SharedState(), llm, store, tmp, "iso_before")
+        after_alpha = run_isolation(IsolatedState(), llm, store, tmp, "iso_after")
+        before_obs = run_recovery(naive_run_recoverable, llm, store, tmp, "rec_before")
+        after_obs = run_recovery(run_recoverable, llm, store, tmp, "rec_after")
 
-    # --- isolation ---
-    iso = Table(title="1. Isolation — Alpha's briefing")
+    iso = Table(title="1. Isolation — tenant Alpha's briefing")
     iso.add_column("scenario")
     iso.add_column("Alpha's briefing content")
     iso.add_column("clean?")
-    iso.add_row("BEFORE — shared state", before_alpha, "[red]NO — contains Beta[/red]")
+    iso.add_row("BEFORE — shared memory", before_alpha, "[red]NO — contains Beta[/red]")
     after_clean = "beta" not in after_alpha.lower() and "alpha" in after_alpha.lower()
     iso.add_row(
         "AFTER — your IsolatedState",
@@ -108,7 +95,6 @@ def main() -> None:
     )
     console.print(iso)
 
-    # --- recovery ---
     rec = Table(title="2. Recovery — obligations after crash + resume")
     rec.add_column("scenario")
     rec.add_column("obligations for one run")
@@ -124,9 +110,9 @@ def main() -> None:
 
     if after_clean and after_obs == 1:
         console.print(
-            "[bold green]✓ Both fixed.[/bold green] State is namespaced per run "
-            "(no cross-client bleed), and a resumed run reuses its checkpoint instead "
-            "of redoing the write."
+            "[bold green]✓ Both fixed.[/bold green] Memory is namespaced per run/tenant "
+            "(no cross-tenant bleed), and a resumed run reuses its checkpoint instead of "
+            "redoing the write."
         )
     else:
         todo = []
@@ -135,6 +121,8 @@ def main() -> None:
         if after_obs != 1:
             todo.append("Task 2: make run_recoverable skip work already completed")
         console.print("[bold yellow]Not fully fixed yet.[/bold yellow] " + "  •  ".join(todo))
+
+    store.close()
 
 
 if __name__ == "__main__":

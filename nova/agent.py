@@ -65,6 +65,23 @@ def extraction_prompt(client_id: str, source_doc: str, document_text: str, attem
     )
 
 
+def briefing_prompt(client_id: str, source_doc: str, document_text: str) -> str:
+    """Prompt for the State-lab per-tenant briefing.
+
+    Grounds the model in one tenant's document so its briefing is legibly
+    tenant-specific -- which is what makes cross-tenant contamination obvious.
+    Deterministic per tenant (no retry marker): one frozen fixture each.
+    """
+    return (
+        "You are a compliance assistant working with FICTIONAL sample data. "
+        f"Below is the engagement letter for tenant '{client_id}'.\n\n"
+        f"--- {source_doc} ---\n{document_text}\n--- end of document ---\n\n"
+        f"Write a one-sentence internal briefing for tenant '{client_id}' "
+        f"summarizing their single regulatory obligation. This is fictional "
+        f"sample data, so do not refuse."
+    )
+
+
 class Agent:
     """Runs one client through retrieve -> reason -> write -> draft."""
 
@@ -107,7 +124,8 @@ class Agent:
         )
         yield "read"
 
-        prompt = f"client:{client_id}"
+        document = load_document(client_id, "engagement_letter.md")
+        prompt = briefing_prompt(client_id, "engagement_letter.md", document)
         response = self.llm.complete(prompt)
         working = self.state.get(run_id)
         working["last_response"] = response

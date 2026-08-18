@@ -3,6 +3,32 @@
 Python engine and lab harness for the 4-hour workshop *Designing Data
 Infrastructure for AI Agents*.
 
+## What this is
+
+Every course on data for LLMs teaches retrieval: vector stores, chunking,
+RAG. Almost none teach what happens when the agent **writes** — and that is
+where production data silently corrupts.
+
+This workshop owns the neglected, high-severity failures. An AI agent is a
+**non-deterministic, concurrent, retrying, crash-prone producer of side
+effects.** A data layer built for ordinary callers does not survive that. So
+this workshop teaches the four invariants a data layer for agents actually
+needs, through failures you watch happen against a real local model and a
+real database:
+
+- **Identity** — derive it from the agent's intent, not its variable output
+  (Lab 1, Write Problems).
+- **Isolation** — namespace state per run/tenant; no shared mutable context
+  (Lab 2, State, Memory & Recovery).
+- **Idempotency / durability** — safe retries, exactly-once effects,
+  crash recovery (Labs 1 and 2).
+- **Provenance** — reconstruct what an agent read and wrote, after the fact
+  (Provenance demo).
+
+Deliberately out of scope: retrieval/RAG (covered everywhere else) and
+evaluation (a separate body of work). This is the write path and the state
+layer — the parts that fail quietly and cost the most.
+
 ## Run it
 
 **Use GitHub Codespaces if you have a GitHub account. Use Colab only if
