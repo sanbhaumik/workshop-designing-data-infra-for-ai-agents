@@ -43,11 +43,23 @@ echo "==> [3/5] Postgres role + database ('${DB_NAME}')"
 run_pg() { (sudo -n -u postgres psql -p "${PGPORT}" -tc "$1" 2>/dev/null \
           || su -c "psql -p ${PGPORT} -tc \"$1\"" postgres 2>/dev/null) || true; }
 run_pg "ALTER ROLE postgres WITH LOGIN;"
-# Give the postgres role a password so TCP connections work under the distro's
-# default md5/scram pg_hba (Debian/Colab). DATABASE_URL carries this password.
 run_pg "ALTER USER postgres PASSWORD 'postgres';"
 if ! run_pg "SELECT 1 FROM pg_database WHERE datname='${DB_NAME}';" | grep -q 1; then
   run_pg "CREATE DATABASE ${DB_NAME};"
+fi
+
+# Trust local/loopback connections so a passwordless DATABASE_URL works under the
+# distro's default md5/scram pg_hba (Debian/Colab). This box is ephemeral and
+# local-only, so trust auth is appropriate. This is the real fix for
+# "fe_sendauth: no password supplied".
+HBA=$(run_pg "SHOW hba_file;" | tr -d '[:space:]')
+if [ -n "$HBA" ] && [ -f "$HBA" ]; then
+  {
+    echo "local   all   all                    trust"
+    echo "host    all   all   127.0.0.1/32     trust"
+    echo "host    all   all   ::1/128          trust"
+  } > "$HBA"
+  run_pg "SELECT pg_reload_conf();" >/dev/null 2>&1 || true
 fi
 
 if [ "$SKIP_OLLAMA" = "1" ]; then
