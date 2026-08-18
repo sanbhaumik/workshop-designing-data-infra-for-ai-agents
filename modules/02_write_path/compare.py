@@ -23,6 +23,7 @@ from rich.console import Console
 from rich.table import Table
 
 from nova.agent import extraction_prompt, load_document
+from nova.cli import run_guarded
 from nova.effects import FILED, RegulatoryFilingSystem
 from nova.llm import get_llm
 from nova.store import get_store
@@ -106,4 +107,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    run_guarded(main)

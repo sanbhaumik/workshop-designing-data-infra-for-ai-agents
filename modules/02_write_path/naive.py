@@ -23,6 +23,7 @@ from rich.panel import Panel
 from rich.table import Table
 
 from nova.agent import extraction_prompt, load_document
+from nova.cli import run_guarded, truncate
 from nova.effects import FILED, RegulatoryFilingSystem
 from nova.llm import get_llm
 from nova.store import get_store
@@ -86,7 +87,7 @@ def main() -> None:
     table.add_column("outcome")
     table.add_column("obligation text filed")
     for i, attempt in enumerate(filing.attempts, start=1):
-        table.add_row(str(i), attempt.outcome, attempt.obligation_text)
+        table.add_row(str(i), attempt.outcome, truncate(attempt.obligation_text, 60))
     console.print(table)
 
     n = len(filing.filings())
@@ -101,4 +102,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    run_guarded(main)

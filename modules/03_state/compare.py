@@ -24,6 +24,7 @@ from rich.console import Console
 from rich.table import Table
 
 from nova.agent import Agent, SharedState
+from nova.cli import run_guarded, truncate
 from nova.llm import get_llm
 from nova.scheduler import Scheduler
 from nova.store import get_store
@@ -86,11 +87,11 @@ def main() -> None:
     iso.add_column("scenario")
     iso.add_column("Alpha's briefing content")
     iso.add_column("clean?")
-    iso.add_row("BEFORE — shared memory", before_alpha, "[red]NO — contains Beta[/red]")
+    iso.add_row("BEFORE — shared memory", truncate(before_alpha, 60), "[red]NO — contains Beta[/red]")
     after_clean = "beta" not in after_alpha.lower() and "alpha" in after_alpha.lower()
     iso.add_row(
         "AFTER — your IsolatedState",
-        after_alpha,
+        truncate(after_alpha, 60),
         "[green]YES[/green]" if after_clean else "[red]NO — contains Beta[/red]",
     )
     console.print(iso)
@@ -126,4 +127,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    run_guarded(main)

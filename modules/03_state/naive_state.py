@@ -23,6 +23,7 @@ from rich.panel import Panel
 from rich.table import Table
 
 from nova.agent import Agent, SharedState
+from nova.cli import run_guarded, truncate
 from nova.llm import get_llm
 from nova.scheduler import Scheduler
 from nova.store import get_store
@@ -90,8 +91,8 @@ def main() -> None:
     briefings = Table(title="Final briefings  (SELECT * FROM briefings)")
     briefings.add_column("tenant")
     briefings.add_column("briefing content")
-    briefings.add_row("alpha", alpha.get("content") or "")
-    briefings.add_row("beta", beta.get("content") or "")
+    briefings.add_row("alpha", truncate(alpha.get("content") or "", 64))
+    briefings.add_row("beta", truncate(beta.get("content") or "", 64))
     console.print(briefings)
 
     if "beta" in (alpha.get("content") or "").lower():
@@ -104,4 +105,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    run_guarded(main)

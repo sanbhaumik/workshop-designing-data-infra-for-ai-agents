@@ -50,10 +50,12 @@ fi
 if [ "$SKIP_OLLAMA" = "1" ]; then
   echo "==> [4/4] Skipping Ollama (participant path: recorded fixtures, NOVA_LLM=frozen)"
   echo
-  echo "Setup complete (participant path). Before running the labs, export:"
-  echo "  export DATABASE_URL=postgresql://postgres@localhost:${PGPORT}/${DB_NAME}"
-  echo "  export NOVA_LLM=frozen"
-  echo "Then run:  python preflight.py"
+  echo "======================================================================"
+  echo "  ✅ SETUP COMPLETE (participant path). Next:"
+  echo "     export DATABASE_URL=postgresql://postgres@localhost:${PGPORT}/${DB_NAME}"
+  echo "     export NOVA_LLM=frozen"
+  echo "     python preflight.py     # expect a GREEN banner"
+  echo "======================================================================"
   exit 0
 fi
 
@@ -74,8 +76,10 @@ echo "==> [5/5] Pull model '${MODEL}' (this is the slow step on first run)"
 ollama pull "${MODEL}"
 
 echo
-echo "Setup complete (facilitator path). Before running the labs, export:"
-echo "  export DATABASE_URL=postgresql://postgres@localhost:${PGPORT}/${DB_NAME}"
-echo "  export NOVA_LLM=ollama"
-echo "  export OLLAMA_MODEL=${MODEL}"
-echo "Then run:  python preflight.py"
+echo "======================================================================"
+echo "  ✅ SETUP COMPLETE (facilitator path). Next:"
+echo "     export DATABASE_URL=postgresql://postgres@localhost:${PGPORT}/${DB_NAME}"
+echo "     export NOVA_LLM=ollama"
+echo "     export OLLAMA_MODEL=${MODEL}"
+echo "     python preflight.py     # expect a GREEN banner"
+echo "======================================================================"
