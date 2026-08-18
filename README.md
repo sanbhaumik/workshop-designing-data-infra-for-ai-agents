@@ -82,19 +82,21 @@ python scripts/generate_trace.py             # regenerate fixtures/traces/incide
 python modules/04_provenance/walk_trace.py   # facilitator forensic viewer
 ```
 
-## Content to replace
+## Real stack, two ways to run
 
-Everything under `fixtures/` is a placeholder, not real content. Each file
-starts with `PLACEHOLDER — replace with real content`.
+The labs run a real agent against a **real Postgres database**. The model is a
+**real local open-source model** (Ollama, `llama3.2:1b`).
 
-- `fixtures/clients/alpha/*.md`, `fixtures/clients/beta/*.md` — placeholder
-  client documents.
-- `fixtures/llm_responses/*.json` — placeholder frozen LLM responses.
-- `fixtures/embeddings/*.npy` — placeholder frozen embedding vectors.
+- **Participants / default** (`NOVA_LLM=frozen`): the model's answers are
+  replayed from real recordings captured once from that same model. Real agent,
+  real code, real database, real fixes — 100% reproducible, no slow model
+  install. See `SETUP.md`.
+- **Facilitator / opt-in** (`NOVA_LLM=ollama`): the live model, generating fresh
+  each run.
 
-## No network at runtime
+The test suite always uses the recordings (`NOVA_LLM=frozen`) + SQLite, so it is
+deterministic and offline.
 
-The workshop never calls a real LLM or embeddings API. `nova/frozen_llm.py`
-and `nova/embeddings.py` serve pre-recorded fixtures looked up by content
-hash. An optional live-recording path exists to regenerate fixtures but is
-gated behind `NOVA_LIVE_LLM=1` and is never used during the workshop.
+Fixtures under `fixtures/clients/` are synthetic sample documents, marked
+`SAMPLE / FICTIONAL`. `fixtures/llm_responses/` holds real recorded model
+outputs. Swap in your own client documents and re-record to customize.

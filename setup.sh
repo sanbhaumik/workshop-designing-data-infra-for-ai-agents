@@ -13,6 +13,10 @@ set -euo pipefail
 MODEL="${OLLAMA_MODEL:-llama3.2:1b}"
 PGPORT="${PGPORT:-5432}"
 DB_NAME="${DB_NAME:-nova}"
+# SKIP_OLLAMA=1 provisions the participant path: real Postgres + recorded model
+# fixtures (NOVA_LLM=frozen), skipping the slow Ollama install and model pull.
+# The facilitator runs the full setup (live model) by leaving SKIP_OLLAMA unset.
+SKIP_OLLAMA="${SKIP_OLLAMA:-0}"
 
 echo "==> [1/5] Python dependencies"
 pip install -q -r requirements.txt
@@ -43,6 +47,16 @@ if ! run_pg "SELECT 1 FROM pg_database WHERE datname='${DB_NAME}';" | grep -q 1;
   run_pg "CREATE DATABASE ${DB_NAME};"
 fi
 
+if [ "$SKIP_OLLAMA" = "1" ]; then
+  echo "==> [4/4] Skipping Ollama (participant path: recorded fixtures, NOVA_LLM=frozen)"
+  echo
+  echo "Setup complete (participant path). Before running the labs, export:"
+  echo "  export DATABASE_URL=postgresql://postgres@localhost:${PGPORT}/${DB_NAME}"
+  echo "  export NOVA_LLM=frozen"
+  echo "Then run:  python preflight.py"
+  exit 0
+fi
+
 echo "==> [4/5] Ollama"
 if ! command -v ollama >/dev/null 2>&1; then
   curl -fsSL https://ollama.com/install.sh | sh
@@ -60,7 +74,7 @@ echo "==> [5/5] Pull model '${MODEL}' (this is the slow step on first run)"
 ollama pull "${MODEL}"
 
 echo
-echo "Setup complete. Before running the labs, export:"
+echo "Setup complete (facilitator path). Before running the labs, export:"
 echo "  export DATABASE_URL=postgresql://postgres@localhost:${PGPORT}/${DB_NAME}"
 echo "  export NOVA_LLM=ollama"
 echo "  export OLLAMA_MODEL=${MODEL}"

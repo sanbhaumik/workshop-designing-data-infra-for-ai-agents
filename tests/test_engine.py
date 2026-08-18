@@ -77,7 +77,7 @@ def test_frozen_llm_returns_known_response():
     llm = FrozenLLM(FIXTURES / "llm_responses")
     doc = load_document("alpha", "engagement_letter.md")
     response = llm.complete(briefing_prompt("alpha", "engagement_letter.md", doc))
-    assert response.startswith("PLACEHOLDER")
+    assert "obligation" in response.lower()
 
 
 def test_frozen_llm_raises_on_unknown_prompt():

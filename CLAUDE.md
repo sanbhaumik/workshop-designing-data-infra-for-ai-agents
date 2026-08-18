@@ -69,7 +69,7 @@ python modules/04_provenance/walk_trace.py # facilitator forensic viewer
 
 ## Fixtures
 
-`fixtures/` holds placeholders only. Every placeholder file starts with `PLACEHOLDER — replace with real content` and is listed in the README under "Content to replace." Do not generate realistic financial documents or real recorded model outputs — size placeholders only so tests pass.
+`fixtures/llm_responses/` holds **real model outputs recorded once** from the local Ollama model (keyed by prompt hash). This is deliberate: the participant/default path runs `NOVA_LLM=frozen`, replaying these recordings so the labs are real-feeling and 100% reproducible without a live model. To re-record after a prompt change, run the recorder against a running Ollama (see the record step in git history) or set `NOVA_LLM=ollama` and regenerate. Client docs under `fixtures/clients/` are synthetic sample content, clearly marked `SAMPLE / FICTIONAL`. Keep recorded Lab-1 outputs divergent (two different wordings) and Lab-3 Alpha output free of the word "beta", or the deterministic tests break.
 
 ## Conventions
 
@@ -85,7 +85,7 @@ nova/         engine (models, store, frozen_llm, embeddings, agent, scheduler, t
 modules/      01_opening (stub) · 02_write_path (lab) · 03_state (lab)
               04_provenance (demo tooling) · 05_capstone (stub)
 _reference/   correct solutions — never shipped
-fixtures/     placeholder LLM responses, embeddings, client docs, traces
+fixtures/     recorded LLM responses, embeddings, sample client docs, traces
 colab/        one notebook per hands-on lab + preflight
 scripts/      generate_trace.py
 preflight.py  environment self-check
