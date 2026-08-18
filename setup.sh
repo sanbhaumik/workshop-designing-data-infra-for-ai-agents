@@ -6,7 +6,7 @@
 # Idempotent — safe to re-run after a Colab disconnect.
 #
 # Usage:  bash setup.sh
-# Then:   export DATABASE_URL=postgresql://postgres@localhost:5432/nova
+# Then:   export DATABASE_URL=postgresql://postgres:postgres@localhost:5432/nova
 #         export NOVA_LLM=ollama
 set -euo pipefail
 
@@ -43,6 +43,9 @@ echo "==> [3/5] Postgres role + database ('${DB_NAME}')"
 run_pg() { (sudo -n -u postgres psql -p "${PGPORT}" -tc "$1" 2>/dev/null \
           || su -c "psql -p ${PGPORT} -tc \"$1\"" postgres 2>/dev/null) || true; }
 run_pg "ALTER ROLE postgres WITH LOGIN;"
+# Give the postgres role a password so TCP connections work under the distro's
+# default md5/scram pg_hba (Debian/Colab). DATABASE_URL carries this password.
+run_pg "ALTER USER postgres PASSWORD 'postgres';"
 if ! run_pg "SELECT 1 FROM pg_database WHERE datname='${DB_NAME}';" | grep -q 1; then
   run_pg "CREATE DATABASE ${DB_NAME};"
 fi
@@ -52,7 +55,7 @@ if [ "$SKIP_OLLAMA" = "1" ]; then
   echo
   echo "======================================================================"
   echo "  ✅ SETUP COMPLETE (participant path). Next:"
-  echo "     export DATABASE_URL=postgresql://postgres@localhost:${PGPORT}/${DB_NAME}"
+  echo "     export DATABASE_URL=postgresql://postgres:postgres@localhost:${PGPORT}/${DB_NAME}"
   echo "     export NOVA_LLM=frozen"
   echo "     python preflight.py     # expect a GREEN banner"
   echo "======================================================================"
@@ -78,7 +81,7 @@ ollama pull "${MODEL}"
 echo
 echo "======================================================================"
 echo "  ✅ SETUP COMPLETE (facilitator path). Next:"
-echo "     export DATABASE_URL=postgresql://postgres@localhost:${PGPORT}/${DB_NAME}"
+echo "     export DATABASE_URL=postgresql://postgres:postgres@localhost:${PGPORT}/${DB_NAME}"
 echo "     export NOVA_LLM=ollama"
 echo "     export OLLAMA_MODEL=${MODEL}"
 echo "     python preflight.py     # expect a GREEN banner"

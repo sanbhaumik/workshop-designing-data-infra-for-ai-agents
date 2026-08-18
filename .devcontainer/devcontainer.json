@@ -8,7 +8,7 @@
   "remoteEnv": {
     "NOVA_LLM": "ollama",
     "OLLAMA_MODEL": "llama3.2:1b",
-    "DATABASE_URL": "postgresql://postgres@localhost:5432/nova"
+    "DATABASE_URL": "postgresql://postgres:postgres@localhost:5432/nova"
   },
   "customizations": {
     "vscode": {

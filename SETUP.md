@@ -16,7 +16,7 @@ The environment is configured entirely by env vars:
 | Variable | Default | Meaning |
 |---|---|---|
 | `NOVA_LLM` | `ollama` | `frozen` (recorded real outputs — participant/default) or `ollama` (live model — facilitator) |
-| `DATABASE_URL` | local SQLite | `postgresql://postgres@localhost:5432/nova` for the labs |
+| `DATABASE_URL` | local SQLite | `postgresql://postgres:postgres@localhost:5432/nova` for the labs |
 | `OLLAMA_MODEL` | `llama3.2:1b` | any pulled Ollama model |
 | `OLLAMA_TEMPERATURE` | `0.8` | higher = more divergent runs in the Write lab |
 
@@ -50,7 +50,7 @@ cd workshop-designing-data-infra-for-ai-agents
 python3.11 -m venv .venv && source .venv/bin/activate
 bash setup.sh                 # Debian/Ubuntu; on macOS install postgres + ollama via brew
 export NOVA_LLM=ollama
-export DATABASE_URL="postgresql://postgres@localhost:5432/nova"
+export DATABASE_URL="postgresql://postgres:postgres@localhost:5432/nova"
 python preflight.py
 ```
 
