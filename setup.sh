@@ -76,6 +76,11 @@ fi
 
 echo "==> [4/5] Ollama"
 if ! command -v ollama >/dev/null 2>&1; then
+  # Ollama's installer unpacks a zstd-compressed tarball; Colab lacks zstd.
+  if ! command -v zstd >/dev/null 2>&1; then
+    apt-get install -y -qq zstd >/dev/null 2>&1 \
+      || { apt-get update -qq && apt-get install -y -qq zstd >/dev/null 2>&1; } || true
+  fi
   curl -fsSL https://ollama.com/install.sh | sh
 fi
 # Start the server in the background if it isn't answering yet.
