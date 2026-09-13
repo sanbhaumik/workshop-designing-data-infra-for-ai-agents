@@ -35,8 +35,8 @@ def main() -> None:
 
         shared_state = SharedState()
         llm = FrozenLLM(FIXTURES / "llm_responses")
-        agent_alpha = Agent(store, llm, FIXTURES / "embeddings", tracer, shared_state)
-        agent_beta = Agent(store, llm, FIXTURES / "embeddings", tracer, shared_state)
+        agent_alpha = Agent(store, llm, tracer, shared_state)
+        agent_beta = Agent(store, llm, tracer, shared_state)
 
         Scheduler(CONTAMINATION_SCRIPT).run(
             lambda: agent_alpha.run_steps("alpha", "run-047-a"),

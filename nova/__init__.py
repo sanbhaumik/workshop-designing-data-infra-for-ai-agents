@@ -1,1 +1,1 @@
-"""NovaBridge workshop engine: models, store, frozen LLM/embeddings, agent, scheduler, trace."""
+"""NovaBridge workshop engine: models, store, LLM backends, effects, agent, scheduler, trace."""

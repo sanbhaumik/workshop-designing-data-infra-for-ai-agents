@@ -38,8 +38,8 @@ def run_isolation(memory, llm, store, tmp: Path, name: str) -> str:
     """Run the two interleaved tenants sharing `memory`; return Alpha's summary."""
     store.reset_demo()
     tracer = Tracer(tmp / f"{name}.jsonl")
-    agent_alpha = Agent(store, llm, FIXTURES / "embeddings", tracer, memory)
-    agent_beta = Agent(store, llm, FIXTURES / "embeddings", tracer, memory)
+    agent_alpha = Agent(store, llm, tracer, memory)
+    agent_beta = Agent(store, llm, tracer, memory)
     Scheduler(CONTAMINATION_SCRIPT).run(
         lambda: agent_alpha.run_steps("alpha", "run-a"),
         lambda: agent_beta.run_steps("beta", "run-b"),

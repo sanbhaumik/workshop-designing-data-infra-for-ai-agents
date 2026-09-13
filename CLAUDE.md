@@ -38,7 +38,7 @@ This workshop uses a **real agent against a real local open-source LLM and a rea
 2. **Cross-platform, no OS-specific code in the engine.** `pathlib` everywhere; keep OS specifics inside `setup.sh`. The engine must behave identically on a laptop, Codespaces, and Colab.
 3. **Dependencies hard-pinned.** Python 3.11.x. Never bump a version or add a dependency without being asked. New deps pinned with `==` (`psycopg[binary]` is the one added for Postgres).
 4. **Transparency over abstraction.** The agent loop and labs are read by learners. Keep modules small, every step visible, nothing important hidden inside a framework or a clever helper. No agent framework (no LangGraph/LangChain), and no ORM — hand-rolled SQL per backend.
-5. **Legible failures.** Corrupted records and wrong-client briefings are shown via `rich` and must read clearly when screen-shared at 720p. Participants can also see them directly in Postgres via SQL.
+5. **Legible failures.** Double-charges and cross-tenant leaks are shown via `rich` and must read clearly when screen-shared at 720p. Participants can also see them directly in Postgres via SQL.
 
 ## IP fence (hard stop)
 
@@ -54,7 +54,7 @@ Do not build slides, Canva/Excalidraw diagrams, talk tracks, teaching narration,
 python preflight.py                        # environment self-check → GREEN/RED
 pytest                                     # engine + both lab tests
 python modules/02_write_path/naive.py      # show the write-conflict corruption
-python modules/03_state/naive_state.py     # show the wrong-client briefing
+python modules/03_state/naive_state.py     # show the cross-tenant leak
 python scripts/generate_trace.py           # regenerate fixtures/traces/incident_047.json
 python modules/04_provenance/walk_trace.py # facilitator forensic viewer
 ```
@@ -81,11 +81,11 @@ python modules/04_provenance/walk_trace.py # facilitator forensic viewer
 ## Repo map
 
 ```
-nova/         engine (models, store, frozen_llm, embeddings, agent, scheduler, trace)
+nova/         engine (models, store, llm+ollama_llm+frozen_llm, effects, agent, scheduler, trace, cli)
 modules/      01_opening (stub) · 02_write_path (lab) · 03_state (lab)
               04_provenance (demo tooling) · 05_capstone (stub)
 _reference/   correct solutions — never shipped
-fixtures/     recorded LLM responses, embeddings, sample client docs, traces
+fixtures/     recorded LLM responses, sample client docs, traces
 colab/        one notebook per hands-on lab + preflight
 scripts/      generate_trace.py
 preflight.py  environment self-check

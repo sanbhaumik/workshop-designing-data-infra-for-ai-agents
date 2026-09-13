@@ -1,13 +1,11 @@
-"""Engine-level tests: models, store, frozen LLM/embeddings, scheduler, agent,
-tracer, and the state-contamination determinism guarantee (fires 20/20 runs).
+"""Engine-level tests: models, store, frozen LLM, scheduler, agent, tracer, and
+the cross-tenant-leak determinism guarantee (fires 20/20 runs).
 """
 from pathlib import Path
 
-import numpy as np
 import pytest
 
 from nova.agent import Agent, SharedState, format_summary, load_document, summary_prompt
-from nova.embeddings import EmbeddingMissing, embed, search
 from nova.frozen_llm import FixtureMissing, FrozenLLM
 from nova.models import ClientDocument, Summary, TraceEvent
 from nova.scheduler import Scheduler
@@ -74,27 +72,6 @@ def test_frozen_llm_raises_on_unknown_prompt():
 
 
 # ---------------------------------------------------------------------------
-# embeddings
-# ---------------------------------------------------------------------------
-
-
-def test_embed_returns_known_vector():
-    vec = embed("alpha docs", FIXTURES / "embeddings")
-    assert vec.shape == (4,)
-
-
-def test_embed_raises_on_unknown_text():
-    with pytest.raises(EmbeddingMissing):
-        embed("no such text was ever embedded", FIXTURES / "embeddings")
-
-
-def test_search_returns_best_match_first():
-    query = np.array([1.0, 0.0])
-    docs = np.array([[0.0, 1.0], [1.0, 0.0], [0.7, 0.7]])
-    assert search(query, docs, k=2) == [1, 2]
-
-
-# ---------------------------------------------------------------------------
 # scheduler
 # ---------------------------------------------------------------------------
 
@@ -131,7 +108,7 @@ def _build_agent(tmp_path, name: str) -> tuple[Agent, RecordStore]:
     store.init_schema()
     tracer = Tracer(tmp_path / f"{name}_trace.jsonl")
     llm = FrozenLLM(FIXTURES / "llm_responses")
-    agent = Agent(store, llm, FIXTURES / "embeddings", tracer, SharedState())
+    agent = Agent(store, llm, tracer, SharedState())
     return agent, store
 
 
@@ -166,8 +143,8 @@ def _run_contamination(tmp_path, i: int) -> str:
     tracer = Tracer(tmp_path / f"state_{i}_trace.jsonl")
     llm = FrozenLLM(FIXTURES / "llm_responses")
     shared_memory = SharedState()
-    agent_alpha = Agent(store, llm, FIXTURES / "embeddings", tracer, shared_memory)
-    agent_beta = Agent(store, llm, FIXTURES / "embeddings", tracer, shared_memory)
+    agent_alpha = Agent(store, llm, tracer, shared_memory)
+    agent_beta = Agent(store, llm, tracer, shared_memory)
 
     Scheduler(CONTAMINATION_SCRIPT).run(
         lambda: agent_alpha.run_steps("alpha", "run-a"),

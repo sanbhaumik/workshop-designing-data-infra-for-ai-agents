@@ -77,7 +77,7 @@ Module 04 (Provenance) is a facilitator demo — see
 python preflight.py                         # environment self-check
 pytest                                       # engine + both lab tests
 python modules/02_write_path/naive.py        # show the write-conflict corruption
-python modules/03_state/naive_state.py       # show the wrong-client briefing
+python modules/03_state/naive_state.py       # show the cross-tenant leak
 python scripts/generate_trace.py             # regenerate fixtures/traces/incident_047.json
 python modules/04_provenance/walk_trace.py   # facilitator forensic viewer
 ```

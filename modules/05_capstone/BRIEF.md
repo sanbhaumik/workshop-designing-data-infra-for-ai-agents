@@ -13,7 +13,7 @@ labs installed.
 Shape:
 
 1. Present a candidate data architecture for an agent system (a diagram: an
-   agent that retrieves client docs, writes obligations/briefings to a store,
+   agent that reads client docs, charges fees and writes account summaries,
    serves multiple tenants, retries on failure). Seed it with realistic flaws.
 
 2. Participants SCORE it against the four invariants (this is the exercise):

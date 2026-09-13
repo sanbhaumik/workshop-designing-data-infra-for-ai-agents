@@ -28,7 +28,7 @@ def check_python_version() -> None:
 def check_dependencies() -> None:
     import importlib
 
-    modules = ["pydantic", "numpy", "rich", "pytest", "yaml"]
+    modules = ["pydantic", "rich", "pytest"]
     if os.environ.get("DATABASE_URL", "").startswith("postgres"):
         modules.append("psycopg")
     for module_name in modules:

@@ -27,7 +27,7 @@ CONTAMINATION_SCRIPT = ["A:read", "A:reason", "B:read", "B:reason", "A:save", "B
 
 def _build_agent(store: RecordStore, tracer: Tracer, memory) -> Agent:
     llm = FrozenLLM(FIXTURES / "llm_responses")
-    return Agent(store, llm, FIXTURES / "embeddings", tracer, memory)
+    return Agent(store, llm, tracer, memory)
 
 
 def test_isolation_alpha_summary_has_no_beta_data(tmp_path):

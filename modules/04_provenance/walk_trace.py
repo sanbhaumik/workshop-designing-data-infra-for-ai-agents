@@ -1,7 +1,7 @@
 """Module 04 — Provenance: facilitator forensic viewer.
 
 Walks fixtures/traces/incident_047.json and reconstructs why Alpha's
-briefing ended up containing Beta's data, then contrasts that with what's
+summary ended up containing Beta's data, then contrasts that with what's
 answerable from the database alone (nothing).
 
 Run this directly: `python modules/04_provenance/walk_trace.py`

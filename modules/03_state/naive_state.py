@@ -55,8 +55,8 @@ def main() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         tracer = Tracer(Path(tmp) / "naive_state_trace.jsonl")
         shared_memory = SharedState()
-        agent_alpha = Agent(store, llm, FIXTURES / "embeddings", tracer, shared_memory)
-        agent_beta = Agent(store, llm, FIXTURES / "embeddings", tracer, shared_memory)
+        agent_alpha = Agent(store, llm, tracer, shared_memory)
+        agent_beta = Agent(store, llm, tracer, shared_memory)
 
         Scheduler(CONTAMINATION_SCRIPT).run(
             lambda: agent_alpha.run_steps("alpha", "run-a"),

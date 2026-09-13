@@ -88,13 +88,11 @@ class Agent:
         self,
         store: RecordStore,
         llm: FrozenLLM,
-        embeddings_dir: Path,
         tracer: Tracer,
         state: StateBackend,
     ) -> None:
         self.store = store
         self.llm = llm
-        self.embeddings_dir = embeddings_dir
         self.tracer = tracer
         self.state = state
 
