@@ -1,25 +1,23 @@
 """Module 03 — State, Memory & Recovery: your fix.
 
-Edit ONLY this file. Fix `IsolatedState` so each run (each tenant) gets its own
-working memory.
+Edit ONLY this file. You change one function: `state_key`.
 
-Right now `IsolatedState` behaves exactly like the naive `SharedState` in
-nova/agent.py: every run_id sees the SAME dict. When two tenants' runs are
-interleaved, one tenant's data overwrites the shared memory and leaks into the
-other tenant's account summary.
+The agent stores each run's working memory in a shared `MemoryStore`, under a key
+YOU choose. Right now every run returns the same key (""), so two tenants' runs
+collide in one slot and one tenant's data leaks into the other's summary.
+
+There are two tests. One is the live leak. The second is a crash-and-resume — and
+a fix that passes the first can still fail the second. That's the point.
 """
 
 
-class IsolatedState:
-    """Working memory for agent runs. Fix it to namespace by run_id."""
+def state_key(run_id: str, tenant: str) -> str:
+    """Return the key under which this run's working memory is stored.
 
-    def __init__(self) -> None:
-        self._data: dict = {}
-
-    def get(self, run_id: str) -> dict:
-        # TODO: give each run_id its OWN dict instead of one shared dict.
-        return self._data
-
-    def set(self, run_id: str, data: dict) -> None:
-        # TODO: store this run_id's data on its own, not merged into a shared dict.
-        self._data.update(data)
+    Args:
+      run_id: the id of THIS run/attempt. It is ephemeral -- a resumed run may
+              arrive with a reused id, and ids are not unique to a piece of work.
+      tenant: the client this run is serving.
+    """
+    # TODO: give each run its own memory so two tenants never share a slot.
+    return ""  # NAIVE: every run shares one slot -> cross-tenant leak

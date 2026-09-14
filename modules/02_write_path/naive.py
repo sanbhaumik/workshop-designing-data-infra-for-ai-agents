@@ -1,16 +1,18 @@
-"""Module 02 — Write Problems: watch the agent double-charge the client.
+"""Module 02 — Write Problems: watch the 'obvious' table-key fix double-charge.
 
 The NovaBridge agent charges a client's quarterly advisory fee. Agents retry, so
-we run it twice. The naive code charges on every retry. Your `charges` table has
-a unique key, so it only keeps ONE row -- but the payment gateway (the outside
+we run it twice. This demo uses the OBVIOUS fix -- rely on the unique key of the
+`charges` table -- but applies it the natural way: charge the card, then record
+the row. The table dedupes to ONE row, but the payment gateway (the outside
 world) charged the client TWICE. A database constraint protects your records,
-not the client's card.
+not the client's card; the guard has to sit BEFORE the irreversible effect.
 
 The model is real (Ollama) unless NOVA_LLM=frozen; the charges land in a real
 database (Postgres by DATABASE_URL, else SQLite).
 
 Run this directly: `python modules/02_write_path/naive.py`
 """
+import hashlib
 import sys
 from pathlib import Path
 
@@ -26,12 +28,22 @@ from nova.cli import run_guarded, truncate
 from nova.effects import PaymentGateway
 from nova.llm import get_llm
 from nova.store import get_store
-from your_fix import charge_client_fee
 
 CLIENT_ID = "alpha"
 PERIOD = "Q1-2026"
 AMOUNT = 2500
 SOURCE_DOC = "billing_instruction.md"
+
+
+def table_key_charge(gateway, store, client_id: str, billing_period: str, amount: int, memo: str) -> None:
+    """The 'obvious' fix: lean on the charges table's unique key.
+
+    Charges the card, THEN records with ON CONFLICT DO NOTHING. The row dedupes,
+    but the card does not -- the guard is on the wrong side of the effect.
+    """
+    key = hashlib.sha256(f"{client_id}|{billing_period}".encode("utf-8")).hexdigest()
+    gateway.charge(client_id, amount, memo)          # irreversible effect fires first
+    store.record_charge(key, client_id, amount)      # unique key -> only one row survives
 
 
 def run_agent(console: Console, llm, gateway, store, attempt: int) -> str:
@@ -45,7 +57,7 @@ def run_agent(console: Console, llm, gateway, store, attempt: int) -> str:
     console.print(f"             [yellow]{truncate(memo, 90)}[/yellow]")
 
     console.print(f"  [cyan]3. CHARGE[/cyan]    charging the ${AMOUNT} advisory fee…")
-    charge_client_fee(gateway, store, CLIENT_ID, PERIOD, AMOUNT, memo)
+    table_key_charge(gateway, store, CLIENT_ID, PERIOD, AMOUNT, memo)
     console.print()
     return memo
 

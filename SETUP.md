@@ -67,5 +67,5 @@ python -m pytest -q
 ```
 
 The test suite forces `NOVA_LLM=frozen` behavior and SQLite, so it needs neither
-Ollama nor Postgres. Expect `3 failed, 15 passed` on a fresh checkout — the 3
-failures are the two labs' fix-me tests, broken on purpose.
+Ollama nor Postgres. Expect `4 failed, 10 passed` on a fresh checkout — the 4
+failures are the two labs' fix-me tests (two per lab), broken on purpose.

@@ -1,17 +1,14 @@
-"""Reference solution for Module 03 — validates test_state.py.
+"""Reference solution for Module 03 — never shipped to participants.
 
-Not shipped to participants and never merged into your_fix.py.
+The obvious fix is `return run_id`: give each run its own slot. It passes the
+live-isolation test. But run ids are ephemeral and get reused across a crash and
+resume -- so a resumed run keyed on run_id can load another tenant's checkpoint.
+
+The durable fix keys memory on the UNIT OF WORK -- the tenant -- so the right
+checkpoint is found whether the run is live, retried, or resumed.
 """
 
 
-class IsolatedState:
-    """Namespaces working memory by run_id so concurrent runs never see each other's data."""
-
-    def __init__(self) -> None:
-        self._data: dict[str, dict] = {}
-
-    def get(self, run_id: str) -> dict:
-        return self._data.setdefault(run_id, {})
-
-    def set(self, run_id: str, data: dict) -> None:
-        self._data[run_id] = data
+def state_key(run_id: str, tenant: str) -> str:
+    """Key working memory by the tenant (the unit of work), not the run id."""
+    return tenant

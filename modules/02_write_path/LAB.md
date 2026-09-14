@@ -1,32 +1,36 @@
 # Module 02 — Write Problems
 
-The agent charges a client's advisory fee through a payment gateway. Agents
-retry, so the charge can fire twice. A unique key on your `charges` table makes
-the record idempotent, but it does not un-charge the card. Idempotency has to be
-enforced before the irreversible effect.
+The agent charges a client's advisory fee through a payment gateway. Agents retry,
+so the charge can fire twice, and it must reach the card exactly once. You edit
+only `your_fix.py` (`charge_client_fee` and `charge_key`), and meet two traps.
 
-1. Run the agent (and its retry) and watch it double-charge the client:
+There are **two** tests: a replayed retry (same memo) and a regenerated retry
+(the model rewrote the memo). A fix that passes the first can still fail the
+second — that gap is the lesson.
+
+1. Watch the "obvious" table-key fix double-charge the client: the `charges` table
+   dedupes to ONE row, but the gateway charged the card TWICE ($5,000).
    ```bash
    python modules/02_write_path/naive.py
    ```
-2. Read the two tables: your `charges` table shows ONE charge, but the payment
-   gateway charged the client TWICE ($5,000). The constraint protected your
-   records, not the card.
-3. See the single clean row in the real database:
+2. See the single clean row in the real database:
    ```bash
    psql "$DATABASE_URL" -c "SELECT client_id, amount FROM charges;"
    ```
-4. Open `modules/02_write_path/your_fix.py`. Edit `charge_client_fee`: before
-   `gateway.charge(...)`, check `store.already_charged(key)` and return if the
-   fee was already charged. The key is derived from intent (client + period),
-   not the memo text. Edit only this file.
-5. Run the test:
+   The constraint protected your records, not the card. **Aha #1:** guard the
+   effect *before* it fires, not the row after.
+3. Open `your_fix.py`. Move the guard ahead of the charge: check
+   `store.already_charged(key)` before `gateway.charge(...)`. Run the tests:
    ```bash
    pytest modules/02_write_path/test_write.py
    ```
-6. Iterate until it's green (2 passed).
-7. See the before/after:
+   If `charge_key` is keyed on the memo, the replayed retry passes but the
+   regenerated retry **fails** — the model rewrote the memo, so the "same" fee
+   got two keys. **Aha #2:** key on the fee's intent (client + period), not the
+   agent's output.
+4. Fix `charge_key` to key on intent, and run the tests again until both are
+   green (2 passed, plus the sanity test).
+5. See the full before/after — both retry kinds, side by side:
    ```bash
    python modules/02_write_path/compare.py
    ```
-   BEFORE: 2 charges ($5,000). AFTER: 1 charge ($2,500).

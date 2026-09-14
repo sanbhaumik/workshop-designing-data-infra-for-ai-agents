@@ -14,7 +14,7 @@ from pathlib import Path
 # Make `nova` importable when run directly (e.g. `python scripts/generate_trace.py`).
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from nova.agent import Agent, SharedState
+from nova.agent import Agent, MemoryStore
 from nova.frozen_llm import FrozenLLM
 from nova.scheduler import Scheduler
 from nova.store import RecordStore
@@ -33,10 +33,11 @@ def main() -> None:
         store.init_schema()
         tracer = Tracer(Path(tmp) / "incident_047_raw.jsonl")
 
-        shared_state = SharedState()
+        memory = MemoryStore()
+        naive_key = lambda run_id, tenant: ""  # NAIVE: one slot for every run -> leak
         llm = FrozenLLM(FIXTURES / "llm_responses")
-        agent_alpha = Agent(store, llm, tracer, shared_state)
-        agent_beta = Agent(store, llm, tracer, shared_state)
+        agent_alpha = Agent(store, llm, tracer, memory, naive_key)
+        agent_beta = Agent(store, llm, tracer, memory, naive_key)
 
         Scheduler(CONTAMINATION_SCRIPT).run(
             lambda: agent_alpha.run_steps("alpha", "run-047-a"),

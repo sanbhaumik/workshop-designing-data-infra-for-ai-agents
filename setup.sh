@@ -19,7 +19,10 @@ DB_NAME="${DB_NAME:-nova}"
 SKIP_OLLAMA="${SKIP_OLLAMA:-0}"
 
 echo "==> [1/5] Python dependencies"
-pip install -q -r requirements.txt
+# Use `python -m pip` so deps land in the SAME interpreter that runs the labs,
+# and PIP_BREAK_SYSTEM_PACKAGES so pip installs on PEP 668 "externally managed"
+# environments (recent Colab / Debian) instead of refusing and aborting.
+PIP_BREAK_SYSTEM_PACKAGES=1 python -m pip install -q -r requirements.txt
 
 echo "==> [2/5] Postgres server"
 if ! command -v psql >/dev/null 2>&1; then

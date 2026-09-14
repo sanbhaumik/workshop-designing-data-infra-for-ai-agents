@@ -1,30 +1,33 @@
 # Module 03 — State, Memory & Recovery
 
-Two agent runs serve two different tenants while sharing one mutable memory
-object. Tenant Beta's run overwrites the shared memory, and tenant Alpha's run
-then saves an account summary built from Beta's data — a cross-tenant leak,
-written to a real database. Alpha's summary shows Beta's balance.
+The agent keeps working memory in a shared `MemoryStore`, addressed by whatever
+key `state_key(run_id, tenant)` returns. The shipped version returns the same key
+for every run, so two tenants' runs share one slot and one leaks into the other.
+You change only `state_key` in `your_fix.py`.
 
-1. Run the naive path and watch the leak happen step by step:
+There are **two** tests. The first is a live leak; the second is a crash-and-resume.
+A fix that passes the first can still fail the second — that gap is the lesson.
+
+1. Watch the live leak happen step by step:
    ```bash
    python modules/03_state/naive_state.py
    ```
-2. Read the interleaved-steps table. Find the row where run-a (serves Alpha)
-   saves while `memory.tenant` is already `beta`. That's the leak.
-3. See the leaked row in the real database:
+2. See the leaked row in the real database:
    ```bash
    psql "$DATABASE_URL" -c "SELECT client_id, content FROM summaries;"
    ```
-4. Open `modules/03_state/your_fix.py`. Fix `IsolatedState` so `get`/`set`
-   namespace memory by `run_id` (each run gets its own dict). Edit only this
-   file.
-5. Run the test:
+3. Open `modules/03_state/your_fix.py`. Try the obvious fix first: give each run
+   its own slot by returning `run_id`.
+4. Run the tests:
    ```bash
    pytest modules/03_state/test_state.py
    ```
-6. Iterate until it's green (1 passed).
-7. See the before/after:
+   The live-isolation test passes — but the recovery test **fails**. A run crashed,
+   another tenant reused its attempt id, and the resumed run loaded the wrong
+   tenant's checkpoint. `run_id` is an ephemeral attempt id, not identity.
+5. Fix `state_key` to key on the **unit of work** (the tenant), which survives a
+   crash and resume. Run the tests again until both are green (2 passed).
+6. See the full before/after — live and recovery, side by side:
    ```bash
    python modules/03_state/compare.py
    ```
-   Alpha's summary goes from "contains Beta" to clean.

@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from nova.agent import Agent, SharedState, format_summary, load_document, summary_prompt
+from nova.agent import Agent, MemoryStore, format_summary, load_document, summary_prompt
 from nova.frozen_llm import FixtureMissing, FrozenLLM
 from nova.models import ClientDocument, Summary, TraceEvent
 from nova.scheduler import Scheduler
@@ -108,7 +108,7 @@ def _build_agent(tmp_path, name: str) -> tuple[Agent, RecordStore]:
     store.init_schema()
     tracer = Tracer(tmp_path / f"{name}_trace.jsonl")
     llm = FrozenLLM(FIXTURES / "llm_responses")
-    agent = Agent(store, llm, tracer, SharedState())
+    agent = Agent(store, llm, tracer, MemoryStore(), lambda run_id, tenant: tenant)
     return agent, store
 
 
@@ -142,9 +142,10 @@ def _run_contamination(tmp_path, i: int) -> str:
     store.init_schema()
     tracer = Tracer(tmp_path / f"state_{i}_trace.jsonl")
     llm = FrozenLLM(FIXTURES / "llm_responses")
-    shared_memory = SharedState()
-    agent_alpha = Agent(store, llm, tracer, shared_memory)
-    agent_beta = Agent(store, llm, tracer, shared_memory)
+    memory = MemoryStore()
+    shared_key = lambda run_id, tenant: ""  # NAIVE: one slot for every run -> leak
+    agent_alpha = Agent(store, llm, tracer, memory, shared_key)
+    agent_beta = Agent(store, llm, tracer, memory, shared_key)
 
     Scheduler(CONTAMINATION_SCRIPT).run(
         lambda: agent_alpha.run_steps("alpha", "run-a"),

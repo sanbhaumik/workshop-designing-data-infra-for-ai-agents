@@ -70,15 +70,24 @@ reusable **four-invariant scorecard** for their own architectures.
 - **One codebase, one `setup.sh`;** thin Colab notebooks + `.devcontainer` call
   it. Verified end-to-end in a Colab-matching Debian container (setup +
   preflight + both labs + SQL all green). Pushed to GitHub; runs in Colab.
-- **Tests:** 13 pass / 2 intentional fail-naive; all pass with `_reference/`
-  fixes.
+- **Tests:** 10 pass / 4 intentional fail-naive (2 per lab); all pass with
+  `_reference/` fixes. State cross-tenant leak still fires 20/20.
 
 ## Key open item
 The **"adversarial design investigation" upgrade** — make each lab a real design
-decision with a hidden false-confidence test (e.g. crash-and-resume breaking the
-naive isolation fix; the write contract that survives retries + stale context) —
-is **decided in principle but not yet built**. The full slide outline assumes
-it. The currently shipped labs are the simpler "fix one function" version.
+decision with a hidden false-confidence test — is **built**. Both labs now ship
+naive and walk through an obvious fix that passes a visible test but fails a
+hidden one:
+- **Lab 1:** naive charges every time → the "table-key" fix dedupes the row but
+  double-charges the card (lived, effect-boundary aha) → guarding the effect but
+  keying on the *memo* passes a replayed retry, fails a regenerated one (hidden,
+  non-deterministic-id aha) → key on intent (client + period). Participant edits
+  `charge_client_fee` + `charge_key`.
+- **Lab 2:** the participant edits one function, `state_key(run_id, tenant)`.
+  Constant key → live leak; `run_id` → passes live isolation but a crash + reused
+  attempt id + resume restores another tenant's checkpoint (hidden recovery test);
+  `tenant` (the unit of work) → both pass. Engine gained `MemoryStore` +
+  `save_from_checkpoint`.
 
 ## Strategic through-line of the design so far
 The labs were repeatedly moved *up* in seniority: from "add a UNIQUE constraint"

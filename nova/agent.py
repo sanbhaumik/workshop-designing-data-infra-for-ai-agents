@@ -1,37 +1,34 @@
 """Transparent agent loop: retrieve -> reason -> save.
 
-Every step is a plain method call, nothing hidden inside a framework. State
-handling is dependency-injected so the labs can swap in a broken or fixed
-memory backend without touching this file.
+Every step is a plain method call, nothing hidden inside a framework. Working
+memory lives in a plain keyed store; WHICH key each run uses is a decision the
+State lab hands to the participant (`state_key`).
 """
 from pathlib import Path
-from typing import Generator, Protocol
+from typing import Callable, Generator
 
 from nova.frozen_llm import FrozenLLM
 from nova.models import Summary
 from nova.store import RecordStore
 from nova.trace import Tracer
 
-
-class StateBackend(Protocol):
-    """Working memory storage keyed by run_id."""
-
-    def get(self, run_id: str) -> dict: ...
-
-    def set(self, run_id: str, data: dict) -> None: ...
+# state_key(run_id, tenant) -> the key under which this run's memory is stored.
+StateKey = Callable[[str, str], str]
 
 
-class SharedState:
-    """NAIVE: one dict shared by every run_id -- no isolation between runs."""
+class MemoryStore:
+    """The agent's working memory: a plain dict addressed by whatever key you
+    choose. It does not decide isolation -- `state_key` does. Persists within a
+    process, so it also serves as the checkpoint a resumed run reads back."""
 
     def __init__(self) -> None:
-        self._data: dict = {}
+        self._data: dict[str, dict] = {}
 
-    def get(self, run_id: str) -> dict:
-        return self._data
+    def get(self, key: str) -> dict:
+        return self._data.setdefault(key, {})
 
-    def set(self, run_id: str, data: dict) -> None:
-        self._data.update(data)
+    def set(self, key: str, value: dict) -> None:
+        self._data[key] = value
 
 
 def format_summary(client_id: str, response: str) -> str:
@@ -89,12 +86,14 @@ class Agent:
         store: RecordStore,
         llm: FrozenLLM,
         tracer: Tracer,
-        state: StateBackend,
+        memory: MemoryStore,
+        state_key: StateKey,
     ) -> None:
         self.store = store
         self.llm = llm
         self.tracer = tracer
-        self.state = state
+        self.memory = memory
+        self.state_key = state_key
 
     def run(self, client_id: str, run_id: str) -> Summary:
         """Run the full loop to completion (no scheduler) and return the Summary."""
@@ -108,37 +107,52 @@ class Agent:
     def run_steps(self, client_id: str, run_id: str) -> Generator[str, None, Summary]:
         """Generator yielding 'read', 'reason', 'save' checkpoints.
 
-        Holds working memory in self.state across steps and emits a trace event
-        at each one. Returns the final Summary via StopIteration.
+        Holds working memory in self.memory under `state_key(run_id, tenant)`,
+        and emits a trace event at each step. Returns the Summary via StopIteration.
         """
-        working = self.state.get(run_id)
+        key = self.state_key(run_id, client_id)
+
+        working = self.memory.get(key)
         working["client_id"] = client_id
-        self.state.set(run_id, working)
+        self.memory.set(key, working)
         self.tracer.event(
             run_id, "read",
-            {"client_id": client_id, "memory_snapshot": dict(working)},
+            {"client_id": client_id, "memory_key": key, "memory_snapshot": dict(working)},
         )
         yield "read"
 
         document = load_document(client_id, "account_note.md")
         response = self.llm.complete(summary_prompt(client_id, document))
-        working = self.state.get(run_id)
+        working = self.memory.get(key)
         working["last_response"] = response
-        self.state.set(run_id, working)
+        self.memory.set(key, working)
         self.tracer.event(
             run_id, "reason",
-            {"response": response, "memory_snapshot": dict(working)},
+            {"response": response, "memory_key": key, "memory_snapshot": dict(working)},
         )
         yield "reason"
 
-        working = self.state.get(run_id)
+        working = self.memory.get(key)
         content = format_summary(working.get("client_id", client_id), working.get("last_response", ""))
         self.store.set_summary(client_id, content)
-        summary = Summary(client_id=client_id, content=content)
         self.tracer.event(
             run_id, "save",
-            {"content": content, "memory_snapshot": dict(working)},
+            {"content": content, "memory_key": key, "memory_snapshot": dict(working)},
         )
         yield "save"
 
-        return summary
+        return Summary(client_id=client_id, content=content)
+
+    def save_from_checkpoint(self, client_id: str, run_id: str) -> Summary:
+        """Resume a crashed run: save the summary from whatever memory holds under
+        this run's key. If the key is the ephemeral run id and that id was reused,
+        this restores the WRONG tenant's checkpoint -- the recovery trap."""
+        key = self.state_key(run_id, client_id)
+        working = self.memory.get(key)
+        content = format_summary(working.get("client_id", client_id), working.get("last_response", ""))
+        self.store.set_summary(client_id, content)
+        self.tracer.event(
+            run_id, "resume-save",
+            {"content": content, "memory_key": key, "memory_snapshot": dict(working)},
+        )
+        return Summary(client_id=client_id, content=content)

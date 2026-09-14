@@ -4,6 +4,7 @@
     "step": "read",
     "data": {
       "client_id": "alpha",
+      "memory_key": "",
       "memory_snapshot": {
         "client_id": "alpha"
       }
@@ -14,6 +15,7 @@
     "step": "reason",
     "data": {
       "response": "The client, Alpha Capital Advisors LLC, has a portfolio value of USD 4,200,000 as of Q1 2026, with a mandate to achieve balanced growth.",
+      "memory_key": "",
       "memory_snapshot": {
         "client_id": "alpha",
         "last_response": "The client, Alpha Capital Advisors LLC, has a portfolio value of USD 4,200,000 as of Q1 2026, with a mandate to achieve balanced growth."
@@ -25,6 +27,7 @@
     "step": "read",
     "data": {
       "client_id": "beta",
+      "memory_key": "",
       "memory_snapshot": {
         "client_id": "beta",
         "last_response": "The client, Alpha Capital Advisors LLC, has a portfolio value of USD 4,200,000 as of Q1 2026, with a mandate to achieve balanced growth."
@@ -36,6 +39,7 @@
     "step": "reason",
     "data": {
       "response": "The account summary for client 'beta' is: Beta Partners LP's portfolio value of USD 1,100,000 as of Q1 2026, with a mandate of capital preservation.",
+      "memory_key": "",
       "memory_snapshot": {
         "client_id": "beta",
         "last_response": "The account summary for client 'beta' is: Beta Partners LP's portfolio value of USD 1,100,000 as of Q1 2026, with a mandate of capital preservation."
@@ -47,6 +51,7 @@
     "step": "save",
     "data": {
       "content": "Summary for beta: The account summary for client 'beta' is: Beta Partners LP's portfolio value of USD 1,100,000 as of Q1 2026, with a mandate of capital preservation.",
+      "memory_key": "",
       "memory_snapshot": {
         "client_id": "beta",
         "last_response": "The account summary for client 'beta' is: Beta Partners LP's portfolio value of USD 1,100,000 as of Q1 2026, with a mandate of capital preservation."
@@ -58,6 +63,7 @@
     "step": "save",
     "data": {
       "content": "Summary for beta: The account summary for client 'beta' is: Beta Partners LP's portfolio value of USD 1,100,000 as of Q1 2026, with a mandate of capital preservation.",
+      "memory_key": "",
       "memory_snapshot": {
         "client_id": "beta",
         "last_response": "The account summary for client 'beta' is: Beta Partners LP's portfolio value of USD 1,100,000 as of Q1 2026, with a mandate of capital preservation."

@@ -21,7 +21,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from nova.agent import Agent, SharedState
+from nova.agent import Agent, MemoryStore
 from nova.cli import run_guarded, truncate
 from nova.llm import get_llm
 from nova.scheduler import Scheduler
@@ -54,9 +54,10 @@ def main() -> None:
 
     with tempfile.TemporaryDirectory() as tmp:
         tracer = Tracer(Path(tmp) / "naive_state_trace.jsonl")
-        shared_memory = SharedState()
-        agent_alpha = Agent(store, llm, tracer, shared_memory)
-        agent_beta = Agent(store, llm, tracer, shared_memory)
+        memory = MemoryStore()
+        naive_key = lambda run_id, tenant: ""  # NAIVE: one slot for every run
+        agent_alpha = Agent(store, llm, tracer, memory, naive_key)
+        agent_beta = Agent(store, llm, tracer, memory, naive_key)
 
         Scheduler(CONTAMINATION_SCRIPT).run(
             lambda: agent_alpha.run_steps("alpha", "run-a"),
