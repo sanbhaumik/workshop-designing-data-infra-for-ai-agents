@@ -22,16 +22,22 @@ echo "==> [1/5] Python dependencies"
 # Use `python -m pip` so deps land in the SAME interpreter that runs the labs,
 # and PIP_BREAK_SYSTEM_PACKAGES so pip installs on PEP 668 "externally managed"
 # environments (recent Colab / Debian) instead of refusing.
-#
-# On a clean box the full pinned set installs from wheels. On Colab, pinned
-# pydantic-core tries to build from source and fails -- but Colab already ships
-# pydantic/rich/pytest, so the only dep truly missing is psycopg (wheels exist).
-# We therefore fall back to psycopg-only and NEVER abort setup over deps, so the
-# Postgres steps below still run.
 export PIP_BREAK_SYSTEM_PACKAGES=1
-python -m pip install -q -r requirements.txt \
-  || python -m pip install -q "psycopg[binary]==3.2.9" \
-  || echo "WARNING: pip had errors (continuing; Colab provides pydantic/rich/pytest)"
+if python -c "import pydantic" 2>/dev/null; then
+  # The environment already provides pydantic (e.g. Colab). Installing the pinned
+  # set here would force pydantic-core to build from source and fail loudly, so
+  # add ONLY what's actually missing -- psycopg (wheels exist) plus rich/pytest
+  # if absent. Quiet: no scary build errors on the participant path.
+  echo "     pydantic present -- installing psycopg (+ rich/pytest if missing)"
+  python -m pip install -q "psycopg[binary]==3.2.9" 2>/dev/null || true
+  python -c "import rich"   2>/dev/null || python -m pip install -q rich   2>/dev/null || true
+  python -c "import pytest" 2>/dev/null || python -m pip install -q pytest 2>/dev/null || true
+else
+  # Clean box (Codespaces / laptop): install the exact pinned set from wheels.
+  python -m pip install -q -r requirements.txt \
+    || python -m pip install -q "psycopg[binary]==3.2.9" \
+    || echo "WARNING: pip had errors (continuing)"
+fi
 
 echo "==> [2/5] Postgres server"
 if ! command -v psql >/dev/null 2>&1; then
