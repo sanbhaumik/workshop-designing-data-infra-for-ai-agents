@@ -21,8 +21,17 @@ SKIP_OLLAMA="${SKIP_OLLAMA:-0}"
 echo "==> [1/5] Python dependencies"
 # Use `python -m pip` so deps land in the SAME interpreter that runs the labs,
 # and PIP_BREAK_SYSTEM_PACKAGES so pip installs on PEP 668 "externally managed"
-# environments (recent Colab / Debian) instead of refusing and aborting.
-PIP_BREAK_SYSTEM_PACKAGES=1 python -m pip install -q -r requirements.txt
+# environments (recent Colab / Debian) instead of refusing.
+#
+# On a clean box the full pinned set installs from wheels. On Colab, pinned
+# pydantic-core tries to build from source and fails -- but Colab already ships
+# pydantic/rich/pytest, so the only dep truly missing is psycopg (wheels exist).
+# We therefore fall back to psycopg-only and NEVER abort setup over deps, so the
+# Postgres steps below still run.
+export PIP_BREAK_SYSTEM_PACKAGES=1
+python -m pip install -q -r requirements.txt \
+  || python -m pip install -q "psycopg[binary]==3.2.9" \
+  || echo "WARNING: pip had errors (continuing; Colab provides pydantic/rich/pytest)"
 
 echo "==> [2/5] Postgres server"
 if ! command -v psql >/dev/null 2>&1; then
